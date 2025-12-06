@@ -80,16 +80,13 @@ $(document).on('change', '.quantity-button input', function() {
 });
 
 $(document).ready(function() {
-    
     $('input[name="method-type"]').change(function() {
-        
         $('.payment-card').removeClass('active');
         $(this).closest('.payment-card').addClass('active');
 
         $('.payment-details').slideUp(200);
 
         let selectedValue = $(this).val();
-
         if (selectedValue === 'e-wallet') {
             $('#e-wallet-details').slideDown(300);
         } 

@@ -69,28 +69,24 @@ class AuthController {
     private function getCheckoutDetails() {
         header('Content-Type: application/json');
         $cart_id = $this->getCart($this->user_id);
-        $products = isset($_POST['products']) ? $_POST['products'] : '';
+        $product_ids = isset($_POST['product_ids']) && is_array($_POST['product_ids']) ? $_POST['product_ids'] : [];
 
-        if (!$cart_id) {
-            echo json_encode(['items' => [], 'subtotal' => 0, 'tax' => 0, 'total' => 0]);
+        if (!$cart_id || empty($product_ids)) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid request.']);
             exit;
         }
 
-        $sql = "SELECT p.Product_ID, p.Product_Name, p.Price, p.Image_Path, cp.Quantity
+        // Sanitize all product IDs to be integers
+        $sanitized_product_ids = array_map('intval', $product_ids);
+        $placeholders = implode(',', array_fill(0, count($sanitized_product_ids), '?'));
+
+        $sql = "SELECT p.Product_ID, p.Product_Name, p.Price, cp.Quantity
                 FROM cart_products cp
                 JOIN products p ON cp.Product_ID = p.Product_ID
-                WHERE cp.Cart_ID = ?";
+                WHERE cp.Cart_ID = ? AND p.Product_ID IN ($placeholders)";
 
-        $params = [$cart_id];
-        $types = 's';
-
-        if (!empty($products)) {
-            $product_ids = explode(',', $products);
-            $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
-            $sql .= " AND p.Product_ID IN ($placeholders)";
-            $params = array_merge($params, $product_ids);
-            $types .= str_repeat('s', count($product_ids));
-        }
+        $types = 's' . str_repeat('i', count($sanitized_product_ids));
+        $params = array_merge([$cart_id], $sanitized_product_ids);
 
         $stmt = $this->conn->prepare($sql);
         $stmt->bind_param($types, ...$params);
@@ -98,31 +94,20 @@ class AuthController {
         $result = $stmt->get_result();
 
         $items = [];
-        $subtotal = 0;
-
         if ($result->num_rows > 0) {
             while ($row = $result->fetch_assoc()) {
-                $item_total = $row['Price'] * $row['Quantity'];
-                $subtotal += $item_total;
                 $items[] = [
-                    'product_id' => $row['Product_ID'],
+                    'id' => $row['Product_ID'],
                     'name' => $row['Product_Name'],
                     'price' => $row['Price'],
-                    'image' => $row['Image_Path'],
-                    'quantity' => $row['Quantity'],
-                    'item_total' => $item_total
+                    'quantity' => $row['Quantity']
                 ];
             }
         }
 
-        $tax = $subtotal * 0.06;
-        $total = $subtotal + $tax;
-
         echo json_encode([
-            'items' => $items,
-            'subtotal' => $subtotal,
-            'tax' => $tax,
-            'total' => $total
+            'status' => 'success',
+            'items' => $items
         ]);
         exit;
     }

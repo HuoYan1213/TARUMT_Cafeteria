@@ -532,42 +532,7 @@
 
         <div class="order-summary-container">
             <h2>Order Summary</h2>
-            <div class="order-items">
-                <div>
-                    <span id="order-quantity">3x</span>
-                    <span id="order-items">CEO Latte</span>
-                </div>
-                <span id="order-price">RM xxx.xx</span>
-            </div>
-            <div class="order-items">
-                <div>
-                    <span id="order-quantity">3x</span>
-                    <span id="order-items">CEO Latte</span>
-                </div>
-                <span id="order-price">RM xxx.xx</span>
-            </div>
-            <div class="order-items">
-                <div>
-                    <span id="order-quantity">3x</span>
-                    <span id="order-items">CEO Latte</span>
-                </div>
-                <span id="order-price">RM xxx.xx</span>
-            </div>
-            <div class="split-line"></div>
-            <div class="order-subtotal">
-                <span>Subtotal</span>
-                <span id="order-subtotal">RM xxx.xx
-            </div>
-            <div class="order-tax">
-                <span>SST (6%)</span>
-                <span id="order-tax">RM xxx.xx
-            </div>
-            <div class="split-line"></div>
-            <div class="order-total">
-                <span>Total</span>
-                <span id="order-total">RM xxx.xx
-            </div>
-            <button id="order-button">Place Order</button>
+            <p>Loading your order...</p>
         </div>
     </main>
 
@@ -610,6 +575,86 @@
 
         $('#card-cvc').on('input', function() {
             this.value = this.value.replace(/\D/g, '');
+        });
+
+        $(document).ready(function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productIds = urlParams.get('products');
+
+            if (productIds) {
+                $.ajax({
+                    url: '../../Controller/AuthController.php',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'get_checkout_details',
+                        product_ids: productIds.split(',')
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            updateOrderSummary(response.items);
+                        } else {
+                            console.error('Failed to get checkout details:', response.message);
+                            updateOrderSummary([]);
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('AJAX error fetching checkout details:', xhr.responseText);
+                        updateOrderSummary([]);
+                    }
+                });
+            } else {
+                updateOrderSummary([]);
+            }
+
+            function updateOrderSummary(items) {
+                const summaryContainer = $('.order-summary-container');
+                summaryContainer.empty(); 
+
+                let itemsHtml = '';
+                let subtotal = 0;
+
+                if (items && items.length > 0) {
+                    items.forEach(item => {
+                        const itemTotal = parseFloat(item.price) * parseInt(item.quantity);
+                        subtotal += itemTotal;
+                        itemsHtml += `
+                            <div class="order-items">
+                                <div>
+                                    <span id="order-quantity">${item.quantity}x</span>
+                                    <span id="order-items">${item.name}</span>
+                                </div>
+                                <span id="order-price">RM ${itemTotal.toFixed(2)}</span>
+                            </div>
+                        `;
+                    });
+                } else {
+                    itemsHtml = '<p>No items selected for checkout.</p>';
+                }
+
+                const tax = subtotal * 0.06;
+                const total = subtotal + tax;
+
+                summaryContainer.append(`
+                    <h2>Order Summary</h2>
+                    ${itemsHtml}
+                    <div class="split-line"></div>
+                    <div class="order-subtotal">
+                        <span>Subtotal</span>
+                        <span id="order-subtotal">RM ${subtotal.toFixed(2)}</span>
+                    </div>
+                    <div class="order-tax">
+                        <span>SST (6%)</span>
+                        <span id="order-tax">RM ${tax.toFixed(2)}</span>
+                    </div>
+                    <div class="split-line"></div>
+                    <div class="order-total">
+                        <span>Total</span>
+                        <span id="order-total">RM ${total.toFixed(2)}</span>
+                    </div>
+                    <button id="order-button" ${!items || items.length === 0 ? 'disabled' : ''}>Place Order</button>
+                `);
+            }
         });
     </script>
 </body>
