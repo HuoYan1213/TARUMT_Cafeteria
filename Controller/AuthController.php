@@ -83,9 +83,9 @@ class AuthController {
         $stmt->bind_param("sisds", $order_id, $this->user_id, $current_time, $final_total, $status);
 
         if ($stmt->execute()) {
-            // 4. 把購物車商品移到 order_details (假設您有這個表)
+            // 4. 把購物車商品移到 order_products (假設您有這個表)
             // 這裡做一個簡單的 INSERT SELECT 操作
-            $sql_move = "INSERT INTO order_details (Order_ID, Product_ID, Quantity, Subtotal)
+            $sql_move = "INSERT INTO order_products (Order_ID, Product_ID, Quantity, Subtotal)
                         SELECT ?, Product_ID, Quantity, Subtotal FROM cart_products WHERE Cart_ID = ?";
             $stmt_move = $this->conn->prepare($sql_move);
             $stmt_move->bind_param("ss", $order_id, $cart_id);
