@@ -84,12 +84,25 @@ class AuthController {
 
         if ($stmt->execute()) {
             // 4. 把購物車商品移到 order_products (假設您有這個表)
-            // 這裡做一個簡單的 INSERT SELECT 操作
-            $sql_move = "INSERT INTO order_products (Order_ID, Product_ID, Quantity, Subtotal)
-                        SELECT ?, Product_ID, Quantity, Subtotal FROM cart_products WHERE Cart_ID = ?";
-            $stmt_move = $this->conn->prepare($sql_move);
-            $stmt_move->bind_param("ss", $order_id, $cart_id);
-            $stmt_move->execute();
+            // 這裡需要逐一處理，因為 Order_Product_ID 需要單獨生成
+            $sql_cart_products = "SELECT Product_ID, Quantity, Subtotal FROM cart_products WHERE Cart_ID = ?";
+            $stmt_cart_products = $this->conn->prepare($sql_cart_products);
+            $stmt_cart_products->bind_param("s", $cart_id);
+            $stmt_cart_products->execute();
+            $cart_products_result = $stmt_cart_products->get_result();
+
+            $sql_insert_order_product = "INSERT INTO order_products (Order_Product_ID, Order_ID, Product_ID, Quantity, Subtotal) VALUES (?, ?, ?, ?, ?)";
+            $stmt_insert_order_product = $this->conn->prepare($sql_insert_order_product);
+
+            while ($cart_product = $cart_products_result->fetch_assoc()) {
+                $order_product_id = IDHelper::generate($this->conn, 'order_products', 'Order_Product_ID', 'OPI');
+                $product_id = $cart_product['Product_ID'];
+                $quantity = $cart_product['Quantity'];
+                $subtotal_item = $cart_product['Subtotal'];
+
+                $stmt_insert_order_product->bind_param("ssiid", $order_product_id, $order_id, $product_id, $quantity, $subtotal_item);
+                $stmt_insert_order_product->execute();
+            }
 
             // 5. 清空購物車
             $sql_clear = "DELETE FROM cart_products WHERE Cart_ID = ?";
@@ -97,7 +110,7 @@ class AuthController {
             $stmt_clear->bind_param("s", $cart_id);
             $stmt_clear->execute();
 
-            echo json_encode(['status' => 'success', 'message' => 'Order placed successfully', 'order_id' => $order_id]);
+            echo json_encode(['status' => 'success', 'message' => 'Order placed successfully', 'order_id' => $order_id, 'redirect_to' => 'history.html']);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to create order']);
         }

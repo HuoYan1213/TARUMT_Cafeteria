@@ -694,7 +694,9 @@
                         success: function(response) {
                             if (response.status === 'success') {
                                 displayToast(response.message, 'success');
-                                window.location.href = 'history.html'; // Redirect to history page
+                                if (response.redirect_to) {
+                                    window.location.href = 'navigator.html?page=history';
+                                }
                             } else {
                                 displayToast(response.message || 'Failed to place order.', 'error');
                             }
