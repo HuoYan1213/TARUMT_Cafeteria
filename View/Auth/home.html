@@ -1,0 +1,49 @@
+<title>Home</title>
+
+<div class="intro-card">
+    <img src="../../Icon/logo.png">
+    <div class="intro-content">
+        <h1>A Taste Of Home On Campus</h1>
+        <span>Take a break, slow down. Your time, unplugged.</span>
+        <button id="start-order-button">Start Your Order</button>
+    </div>
+</div>
+
+<div class="top-sales-card">
+    <h1>Today Top Sales</h1>
+    <div class="top-sales-group">
+        <div class="top-sales-items">
+            <img src="#">
+            <div class="item-content">
+                <span>Item Name</span>
+                <span>RM xx.xx</span>
+            </div>
+        </div>
+        <div class="top-sales-items">
+            <img src="#">
+            <div class="item-content">
+                <span>Item Name</span>
+                <span>RM xx.xx</span>
+            </div>
+        </div>
+        <div class="top-sales-items">
+            <img src="#">
+            <div class="item-content">
+                <span>Item Name</span>
+                <span>RM xx.xx</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#start-order-button').on('click', function() {
+            var page = 'menu.html';
+            
+            $('#ajax-result').load(page); 
+            $('nav .ajax-button').removeClass("enabled");   
+            $('nav .ajax-button[data-get="' + page + '"]').addClass("enabled");
+        });
+    });
+</script>

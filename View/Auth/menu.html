@@ -1,0 +1,89 @@
+<title>Menu</title>
+
+<div class="menu-title">
+    <h1>OUR MENU</h1>
+    <span>A Taste Of Home On Campus</span>
+</div>
+
+<div class="menu-container">
+    <div class="category-group">
+        <button id="coffee-series" class="ajax-button active" data-category="Coffee">Coffees</button>
+        <button id="tea-series" class="ajax-button" data-category="Tea">Teas</button>
+        <button id="pastries-series" class="ajax-button" data-category="Pastries">Pastries</button>
+        <button id="hotmeal-series" class="ajax-button" data-category="HotMeal">Hot Meals</button>
+    </div>
+    <section id="category-content"></section>
+</div>
+
+<script>
+    $(document).ready(function() {
+        function loadProducts(category) {
+            $('#category-content').html('<span id="loading-text">Loading...</p>');
+
+            $.ajax({
+                url: '../../../Controller/AuthController.php', 
+                type: 'POST',
+                data: {
+                    action: 'get_products',
+                    category: category
+                },
+                success: function(response) {
+                    $('#category-content').html(response);
+                },
+                error: function() {
+                    displayToast("Failed to load products.", "error");
+                    $('#category-content').html('<p id="error-text">Error loading products.</p>');
+                }
+            });
+        }
+
+        loadProducts('Coffee');
+
+        $(document).on('click', '.category-group .ajax-button', function() {
+            $('.category-group .ajax-button').removeClass('active');
+            $(this).addClass('active');
+
+            let category = $(this).data('category');
+            loadProducts(category);
+        });
+
+
+        $(document).on('click', '.add-cart-button', function(e) {
+            e.preventDefault();
+
+            let id = $(this).data('id');
+            let $button = $(this);  
+
+            if($button.prop('disabled')) return;
+
+            let originalText = $button.text();
+            $button.prop('disabled', true).text('Adding...');
+
+            $.ajax({
+                url: '../../../Controller/AuthController.php',
+                type: 'POST',
+                dataType: 'json', 
+                data: { 
+                    action: 'add_cart', 
+                    product_id: id 
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        displayToast("Added to cart successfully!", "success");                    
+                    }
+                    else {
+                        displayToast("Error: " + response.message, "error");
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX Error:", error);
+                    console.log(xhr.responseText); 
+                    displayToast("Server Error. Please try again.", "error");
+                },
+                complete: function() {
+                    $button.prop('disabled', false).text(originalText);
+                }
+            });
+        });
+    });
+</script>

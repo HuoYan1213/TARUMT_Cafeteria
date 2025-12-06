@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../../CSS/auth.css">
+    <link rel="shortcut icon" href="../../Icon/logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../../JS/script.js"></script>
+</head>
+<body>
+    <img class="decoration" id="decoration-1" src="../../Icon/decoration.png">
+    <img class="decoration" id="decoration-2" src="../../Icon/decoration.png">
+    <img class="decoration" id="decoration-3" src="../../Icon/decoration.png">
+    <img class="decoration" id="decoration-4" src="../../Icon/decoration.png">
+
+    <nav>
+        <button class="ajax-button" id="home-button" data-get="home.html">Home</button>
+        <button class="ajax-button" id="menu-button" data-get="menu.html">Menu</button>
+        <button class="ajax-button" id="cart-button" data-get="cart.html">Cart</button>
+        <button class="ajax-button" id="history-button" data-get="history.html">History</button>
+        <button class="ajax-button" id="profile-button" data-get="profile.html">Profile</button>
+    </nav>
+    <section id="ajax-result"></section>
+
+    <script>
+        $(document).ready(function () {
+            let default_page = "cart.html";
+
+            $('#ajax-result').load(default_page + window.location.search);
+            $("nav .ajax-button[data-get='" + default_page + "']").addClass("enabled");
+        });
+
+        $(document).on('click', 'nav .ajax-button', function() {
+            let page = $(this).data('get');
+            
+            $('#ajax-result').load(page);
+            $('nav .ajax-button').removeClass("enabled");
+            $(this).addClass("enabled");
+        });
+    </script>
+</body>
+</html>

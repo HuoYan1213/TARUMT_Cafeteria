@@ -1,0 +1,161 @@
+@import url(style.css);
+
+body::before {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    inset: 0;
+    opacity: 0.4;
+    background: url(../Icon/background.png);
+    filter: blur(2px) brightness(0.45);
+    background-size: cover;
+    background-position: center;
+    z-index: 1;
+}
+
+section {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 80%;
+    max-width: 850px;
+    height: fit-content;
+    margin: auto;
+    gap: 20px;
+    height: 100%;
+}
+
+section h1 {
+    font-size: 44px;
+    font-family: var(--dancing-script);
+    color: var(--text-primary);
+    margin: 0;
+    margin-top: 15px;
+    line-height: normal;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.7);
+    z-index: 999;
+}
+
+section img {
+    width: 180px;
+    z-index: 999;
+}
+
+section form {
+    background: var(--background-card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 25px 30px;
+    width: 50%;
+    max-width: 350px;
+    min-width: 150px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    gap: 30px;
+    z-index: 999;
+    box-shadow: var(--shadow-card);
+}
+
+section form .login-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    width: 90%;
+}
+
+section form .login-items {
+    display: flex;
+    align-items: center;
+    background: var(--background-input);
+    border: 2px solid #B69B8D;
+    border-radius: 5px;
+    padding: 8px 15px;
+    font-family: var(--BodyFont);
+    width: 100%;
+    outline: none;
+    transition: all 0.3 ease;
+}
+
+section form input {
+    background: transparent;
+    border: none;
+    margin-left: 10px;
+    width: 100%;
+    outline: none;
+}
+
+section form .login-items:focus-within {
+    border: 2px solid var(--border-focus);
+    background: var(--background-input);
+}
+
+section form .submit-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+section form .submit-form .split-line {
+    width: 100%;
+    border-top: 1px dashed #DCCEB8;
+    height: 0%;
+    margin: 15px auto;
+    padding: 0;
+}
+
+section form .submit-form span {
+    display: block;
+    font-size: 12px;
+    color: #4B3621;
+    text-align: center;
+    margin-top: 18px;
+}
+
+section form .submit-form a {
+    font-size: 13px;
+    text-decoration: none;
+    color: var(--link-color);
+    font-family: 'Lora', serif;
+    position: relative;
+    transition: color 0.2s ease;
+}
+
+section form .submit-form a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+section form button {
+    font-family: var(--lora);
+    font-size: 16px;
+    font-weight: bold;
+    background: var(--button-primary-background);
+    color: var(--button-primary-text);
+    padding: 10px;
+    width: 100%;
+    letter-spacing: 2px;
+    border: none;
+    border-radius: 8px;
+    box-shadow: var(--shadow-float);
+    transition: all 0.5s ease;
+    cursor: pointer;
+}
+
+section form button:hover {
+    background: var(--button-hover-background);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(75, 48, 40, 0.3);
+}
+
+@media(max-width: 1024px) {
+    section {
+        width: 100%;
+        max-width: none;
+    }
+}

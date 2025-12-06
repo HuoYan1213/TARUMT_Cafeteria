@@ -1,0 +1,281 @@
+<title>Cart</title>
+
+<div class="cart-container">
+    <div class="cart-details">
+        <h1>My Cart</h1>
+        <div class="cart-header" style="display: none;">
+            <label class="select-all-checkbox" for="select-all-checkbox">
+                <input type="checkbox" id="select-all-checkbox">
+                <span class="checkmark"></span>
+                <span>Select All</span>
+            </label>
+
+            <button class="batch-delete-button">
+                <i class="fa-solid fa-trash-can"></i>
+                Remove Selected
+            </button>
+        </div>
+        <div id="cart-items-container"></div>
+    </div>
+
+    <div class="summary-cost-card">
+        <div class="cost-details" id="summary-cost-container"></div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        function loadCart() {
+            $('#cart-items-container').html('<span id="loading-text">Loading your cart...</span>');
+            $('#summary-cost-container').html('');
+
+            $.ajax({
+                url: '../../Controller/AuthController.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'get_cart_items'
+                },
+                success: function(response) {
+                    $('#cart-items-container').html(response.items_html);
+                    if (response.items_html.includes('Your cart is empty')) {
+                        $('.cart-header').hide();
+                    } else {
+                        $('.cart-header').show();
+                    }
+                    updateSummary();
+                },
+                error: function(xhr) {
+                    console.error('Failed to load cart data.', xhr.responseText);
+                    $('#cart-items-container').html('<p id="error-text">Error loading your cart.</p>');
+                    displayToast("Failed to load cart.", "error");
+                }
+            });
+        }
+
+        function updateSummary() {
+            let subtotal = 0;
+            let selected_items = [];
+
+            $('.cart-item-checkbox:checked').each(function() {
+                let item = $(this).closest('.cart-items');
+                let price = parseFloat(item.data('price'));
+                let quantity = parseInt(item.data('quantity'));
+                subtotal += price * quantity;
+                selected_items.push(item.data('id'));
+            });
+
+            let tax = subtotal * 0.06;
+            let total = subtotal + tax;
+
+            let receipt_items_html = '';
+            if (selected_items.length > 0) {
+                $('.cart-item-checkbox:checked').each(function() {
+                    let item = $(this).closest('.cart-items');
+                    let name = item.find('#item-name').text();
+                    let quantity = item.data('quantity');
+                    let price = item.data('price');
+                    let item_total = price * quantity;
+                    receipt_items_html += `
+                        <div class="receipt-item">
+                            <span>${name} x${quantity}</span>
+                            <span>RM ${item_total.toFixed(2)}</span>
+                        </div>`;
+                });
+            } else {
+                receipt_items_html = '<div class="no-items-found">No items selected</div>';
+            }
+
+            let checkout_button_html = `<button id="checkout-button" ${selected_items.length === 0 ? 'disabled' : ''}>Checkout Now</button>`;
+
+            let summary_html = `
+                <h1>RECEIPT</h1>
+                <div class="receipt-items-container">${receipt_items_html}</div>
+                <div class="dashed-line"></div>
+                <div class="cost-subtotal">
+                    <span>Subtotal</span>
+                    <span>RM ${subtotal.toFixed(2)}</span>
+                </div>
+                <div class="cost-tax">
+                    <span>Tax (6%)</span>
+                    <span>RM ${tax.toFixed(2)}</span>
+                </div>
+                <div class="dashed-line"></div>
+                <div class="total-amount">
+                    <span>TOTAL</span>
+                    <span>RM ${total.toFixed(2)}</span>
+                </div>
+                ${checkout_button_html}`;
+
+            $('#summary-cost-container').html(summary_html);
+        }
+
+        function updateCartQuantity(productId, quantity) {
+            $.ajax({
+                url: '../../Controller/AuthController.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'update_quantity',
+                    product_id: productId,
+                    quantity: quantity
+                },
+                success: function(response) {
+                    if(response.status === 'success') {
+                        loadCart();
+                    } else {
+                        displayToast(response.message, "error");
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Failed to update quantity.', xhr.responseText);
+                    displayToast("Failed to update quantity.", "error");
+                }
+            });
+        }
+
+        function deleteCartItem(productId) {
+            $.ajax({
+                url: '../../Controller/AuthController.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'delete_item',
+                    product_id: productId
+                },
+                success: function(response) {
+                    if(response.status === 'success') {
+                        loadCart();
+                        displayToast("Item removed successfully.", "success");
+                    } else {
+                        displayToast(response.message, "error");
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Failed to delete item.', xhr.responseText);
+                    displayToast("Failed to delete item.", "error");
+                }
+            });
+        }
+
+        $('#cart-items-container').on('click', '.add-button', function() {
+            let input = $(this).siblings('input');
+            let newQuantity = parseInt(input.val()) + 1;
+            if (newQuantity <= 99) {
+                let productId = $(this).closest('.cart-items').data('id');
+                updateCartQuantity(productId, newQuantity);
+            }
+        });
+
+        $('#cart-items-container').on('click', '.minus-button', function() {
+            let input = $(this).siblings('input');
+            let newQuantity = parseInt(input.val()) - 1;
+            let productId = $(this).closest('.cart-items').data('id');
+
+            if (newQuantity === 0) {
+                displayConfirmationToast(
+                    "Are you sure you want to remove this item?",
+                    function() { // onConfirm
+                        deleteCartItem(productId);
+                    },
+                    function() { // onCancel
+                        displayToast("Item removal cancelled.", "error");
+                    }
+                );
+            } else if (newQuantity > 0) {
+                updateCartQuantity(productId, newQuantity);
+            }
+        });
+
+        $('#cart-items-container').on('click', '.delete-button', function() {
+            let productId = $(this).closest('.cart-items').data('id');
+            displayConfirmationToast(
+                "Are you sure you want to remove this item?",
+                function() { // onConfirm
+                    deleteCartItem(productId);
+                },
+                function() { // onCancel
+                    displayToast("Item removal cancelled.", "error");
+                }
+            );
+        });
+
+        $('#summary-cost-container').on('click', '#checkout-button', function() {
+            let selected_items = [];
+            $('.cart-item-checkbox:checked').each(function() {
+                selected_items.push($(this).val());
+            });
+
+            if (selected_items.length > 0) {
+                displayConfirmationToast(
+                    "Are you sure you want to proceed to checkout?",
+                    function() { // onConfirm
+                        window.location.href = 'checkout.html?products=' + selected_items.join(',');
+                    },
+                    function() { // onCancel
+                        displayToast("Checkout cancelled.", "error");
+                    }
+                );
+            } else {
+                displayToast("Please select items to checkout.", "error");
+            }
+        });
+
+        $('#cart-items-container').on('change', '.cart-item-checkbox', function() {
+            updateSummary();
+            if ($('.cart-item-checkbox:checked').length === $('.cart-item-checkbox').length) {
+                $('#select-all-checkbox').prop('checked', true);
+            } else {
+                $('#select-all-checkbox').prop('checked', false);
+            }
+        });
+
+        $('.cart-header').on('change', '#select-all-checkbox', function() {
+            $('.cart-item-checkbox').prop('checked', $(this).prop('checked'));
+            updateSummary();
+        });
+
+        $('.cart-header').on('click', '.batch-delete-button', function() {
+            let selected_items = [];
+            $('.cart-item-checkbox:checked').each(function() {
+                selected_items.push($(this).closest('.cart-items').data('id'));
+            });
+
+            if (selected_items.length > 0) {
+                displayConfirmationToast(
+                    "Are you sure you want to remove the selected items?",
+                    function() { // onConfirm
+                        $.ajax({
+                            url: '../../Controller/AuthController.php',
+                            type: 'POST',
+                            dataType: 'json',
+                            data: {
+                                action: 'batch_delete_items',
+                                product_ids: selected_items
+                            },
+                            success: function(response) {
+                                if(response.status === 'success') {
+                                    loadCart();
+                                    displayToast("Selected items removed successfully.", "success");
+                                } else {
+                                    displayToast(response.message, "error");
+                                }
+                            },
+                            error: function(xhr) {
+                                console.error('Failed to delete items.', xhr.responseText);
+                                displayToast("Failed to delete selected items.", "error");
+                            }
+                        });
+                    },
+                    function() { // onCancel
+                        displayToast("Item removal cancelled.", "error");
+                    }
+                );
+            } else {
+                displayToast("Please select items to remove.", "error");
+            }
+        });
+
+        loadCart();
+    });
+</script>

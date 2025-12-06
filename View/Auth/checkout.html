@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../../CSS/auth.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="shortcut icon" href="../../Icon/logo.png">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../../JS/script.js"></script>
+    <title>Checkout</title>
+    <style>
+        body.checkout {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            background-image: none;
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            margin: 0;
+            padding: 0;
+        }
+
+        .checkout header {
+            box-sizing: border-box;
+            padding: 20px 15px;
+            margin: 0;
+            width: 100%;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            border-bottom: 1px solid #00000015;
+        }
+
+        .checkout header button {
+            border: none;
+            outline: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: var(--lora);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .checkout header button:hover {
+            color: var(--text-primary);
+            text-decoration: underline;
+            transition: all 0.5s ease;
+        }
+
+        .checkout main {
+            width: 100%;
+            width: 100%;
+            margin: 25px 0;
+            padding: 0 50px;
+            display: flex;
+            align-items: flex-start;
+            justify-items: center;
+            box-sizing: border-box;
+            gap: 30px;
+        }
+
+        .order-summary-container {
+            background: #FDFDFD;
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            align-items: flex-start;
+            height: fit-content;
+            max-height: fit-content;
+            width: 80%;
+            padding: 20px 25px;
+            flex: 1;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #00000020;
+            gap: 8px;
+            border-bottom: 1px solid #00000015;
+            margin-bottom: 25px;
+        }
+
+        .order-summary-container h2, .payment-method-container h2 {
+            color: var(--text-primary);
+            font-family: var(--playfair-display);
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+            margin-bottom: 10px;
+        }
+
+        .order-items, .order-subtotal, .order-tax, .order-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            font-size: 12px;
+            font-family: var(--lora);
+            font-weight: 400;
+        }
+
+        .order-subtotal, .order-tax {
+            font-weight: 600;;
+        }
+
+        .order-total {
+            font-size: 16px;
+            font-weight: 900;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+        }
+
+        #order-quantity  {
+            color: var(--text-secondary);
+            margin-right: 10px;
+        }
+
+        #order-price, #order-subtotal, #order-tax, #order-total {
+            color: var(--text-price);
+        }
+
+        .split-line {
+            width: 100%;
+            height: 0;
+            background: #00000015;
+            border-bottom: 1px solid #00000015;
+            margin: 10px 0px;
+        }
+
+        #order-button {
+            font-family: var(--lora);
+            font-size: 16px;
+            font-weight: bold;
+            background: var(--button-primary-background);
+            color: var(--button-primary-text);
+            padding: 10px;
+            width: 100%;
+            letter-spacing: 2px;
+            border: none;
+            border-radius: 8px;
+            box-shadow: var(--shadow-float);
+            transition: all 0.5s ease;
+            cursor: pointer;
+        }
+
+        #order-button:hover {
+            background: var(--button-hover-background);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(75, 48, 40, 0.3);
+        }
+
+        .payment-method-container {
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            align-items: flex-start;
+            height: fit-content;
+            max-height: fit-content;
+            width: 80%;
+            padding: 20px 25px;
+            padding-top: 5px;
+            flex: 1.8;
+            border-radius: 10px;
+            gap: 10px;
+        }
+
+        .payment-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .payment-card {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid #E0E0E0;
+            border-radius: 5px;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 2;
+            position: relative;
+        }
+
+        .payment-card input { 
+            display: none; 
+        }
+
+        .payment-card:hover {
+            border-color: #C1C1C1;
+            transform: translateY(-2px);
+        }
+
+        .payment-card.active {
+            border-color: var(--border-focus);
+            background: #FFF5F2;
+            box-shadow: 0 4px 12px rgba(166, 75, 42, 0.15);
+        }
+
+        .payment-card.active .radio-circle {
+            border-color: #A64B2A;
+            background: #A64B2A;
+            box-shadow: inset 0 0 0 3px #FFFFFF;
+        }
+            
+        .payment-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            margin-right: 15px;
+        }
+
+        .payment-info {
+            font-family: var(--lora);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .payment-name {
+            font-weight: 700;
+            color: #333333;
+            font-size: 15px;
+        }
+
+        .payment-description {
+            font-size: 12px;
+            color: #999999;
+        }
+
+        .radio-circle {
+            width: 12px;
+            height: 12px;
+            border: 2px solid #CCCCCC;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .payment-details {
+            background-color: #FAFAFA;
+            border: 1px solid #E0E0E0;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            padding: 20px;
+            padding-top: 30px;
+            margin-top: -10px;
+            margin-bottom: 5px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .sub-option-grid, .bank-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .sub-option-card, .bank-option {
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            background: white;
+            border: 1px solid #E0E0E0;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.1s;
+            color: var(--text-secondary);
+        }
+
+        .sub-option-card img, .bank-option img {
+            width: 50px;
+            margin-bottom: 6px;
+            border-radius: 10px;
+        }
+
+        .sub-option-card span, .bank-option span {
+            font-family: var(--lora);
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .bank-option span {
+            font-size: 10px;
+        }
+
+        .sub-option-card:hover, .bank-option:hover {
+            border: 2px solid #B5C4AA;
+            color: #333333;
+        }
+
+        .sub-option-card input, .bank-option input { 
+            display: none; 
+        }
+
+        .sub-option-card:has(input:checked), .bank-option:has(input:checked) {
+            border: 2px solid #B5C4AA;
+            background: #D2E6D0;
+            font-weight: bold;
+            color: #333333;
+        }
+
+        .card-input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .card-number-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #CCC;
+            border-radius: 6px;
+            font-family: var(--lora);
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        #card-brand-icon {
+            font-size: 18px;
+            transition: all 0.3s ease;
+            color: #999999;
+        }
+
+        .brand-visa {
+            color: #1A1F71 !important;
+        }
+
+        .brand-mastercard {
+            color: #EB001B !important;
+        }
+
+        .card-number-container input {
+            border: none;
+            outline: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        .card-number-container:focus-within {
+            border-color: #A64B2A;
+        }
+
+        .modern-input {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 12px;
+            border: 1px solid #CCC;
+            border-radius: 6px;
+            font-family: var(--lora);
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .row-inputs {
+            display: flex;
+            gap: 12px;
+        }
+
+        .row-inputs input {
+            flex: 1;
+        }
+
+        .input-error {
+            border-color: #ff4d4f !important;
+        }
+
+        @media (max-width: 1024px) {
+            body.checkout main {
+                flex-direction: column;
+                align-items: center;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body class="checkout">
+    <header>
+        <button>‹ Back</button>
+    </header>
+    <main>
+        <div class="payment-method-container">
+            <h2>Paymentment Method</h2>
+            <div class="payment-list">
+                <div class="payment-method-wrapper">
+                    <label class="payment-card">
+                        <input type="radio" name="method-type" value="e-wallet">
+                        <div class="payment-icon" style="background: #005EB8;"><i class="fa-solid fa-wallet"></i></div>
+                        <div class="payment-info">
+                            <span class="payment-name">E-Wallet</span>
+                            <span class="payment-description">Touch 'n Go, GrabPay, ShopeePay...</span>
+                        </div>
+                        <div class="radio-circle"></div>
+                    </label>
+                    <div class="payment-details hidden" id="e-wallet-details">
+                        <div class="sub-option-grid">
+                            <label class="sub-option-card">
+                                <input type="radio" name="ewallet_provider" value="Touch'n Go">
+                                <img src="../../Icon/tng.svg" alt="Touch'n Go">
+                                <span>Touch'n Go</span>
+                            </label>
+                            <label class="sub-option-card">
+                                <input type="radio" name="ewallet_provider" value="GrabPay">
+                                <img src="../../Icon/grabpay.png" alt="GrabPay">
+                                <span>GrabPay</span>
+                            </label>
+                            <label class="sub-option-card">
+                                <img src="../../Icon/shopeepay.png" alt="ShopeePay">
+                                <span>ShopeePay</span>
+                            </label>
+                            <label class="sub-option-card">
+                                <input type="radio" name="ewallet_provider" value="AliPay">
+                                <img src="../../Icon/alipay.png" alt="AliPay">
+                                <span>AliPay</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="payment-method-wrapper">
+                    <label class="payment-card">
+                        <input type="radio" name="method-type" value="card">
+                        <div class="payment-icon" style="background: #333333;"><i class="fa-regular fa-credit-card"></i></div>
+                        <div class="payment-info">
+                            <span class="payment-name">Credit / Debit Card</span>
+                            <span class="payment-description">Visa, Mastercard...</span>
+                        </div>
+                        <div class="radio-circle"></div>
+                    </label>
+                    
+                    <div class="payment-details hidden" id="card-details">
+                        <div class="card-input-container">
+                            <div class="card-number-container">
+                                <label for="card-number"><i id="card-brand-icon" class="fa-solid fa-credit-card"></i></label>
+                                <input type="text" id="card-number" placeholder="0000 0000 0000 0000" maxlength="19">
+                            </div>
+
+                            <div class="row-inputs">
+                                <input type="text" id="card-expiry" class="modern-input" placeholder="MM / YY" maxlength="7" oninput="formatCardExpiry(this)">
+                                <input type="text" id="card-cvc" class="modern-input" placeholder="CVC" maxlength="3">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="payment-method-wrapper">
+                    <label class="payment-card">
+                        <input type="radio" name="method-type" value="fpx">
+                        <div class="payment-icon" style="background: #8A2BE2;"><i class="fa-solid fa-building-columns"></i></div>
+                        <div class="payment-info">
+                            <span class="payment-name">Online Banking (FPX)</span>
+                            <span class="payment-description">Maybank, CIMB, Public Bank...</span>
+                        </div>
+                        <div class="radio-circle"></div>
+                    </label>
+
+                    <div class="payment-details hidden" id="fpx-details">
+                        <div class="bank-grid">
+                            <label class="bank-option">
+                                <input type="radio" name="bank_provider" value="Maybank2u">
+                                <img src="../../Icon/maybank.png" alt="Maybank">
+                                <span>Maybank</span>
+                            </label>
+                            
+                            <label class="bank-option">
+                                <input type="radio" name="bank_provider" value="CIMB Clicks">
+                                <img src="../../Icon/cimb.png" alt="CIMB">                    
+                                <span>CIMB</span>
+                            </label>
+
+                            <label class="bank-option">
+                                <input type="radio" name="bank_provider" value="PBe">
+                                <img src="../../Icon/publicbank.png" alt="Public Bank">
+                                <span>Public Bank<br>(PBe)</span>
+                            </label>
+
+                            <label class="bank-option">
+                                <input type="radio" name="bank_provider" value="RHB Online Banking">
+                                <img src="../../Icon/rhb.jpeg" alt="RHB">
+                                <span>RHB<br>(RHB Now)</span>
+                            </label>
+
+                            <label class="bank-option">
+                                <input type="radio" name="bank_provider" value="Hong Leong Connect">
+                                <img src="../../Icon/hongleong.jpeg" alt="Hong Leong">
+                                <span>Hong Leong<br>(HLB Connect)</span>
+                            </label>
+
+                            <label class="bank-option">
+                                <input type="radio" name="bank_provider" value="AmOnline">
+                                <img src="../../Icon/ambank.jpeg" alt="AmBank">
+                                <span>AmBank</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="payment-method-wrapper">
+                    <label class="payment-card">
+                        <input type="radio" name="method-type" value="counter">
+                        <div class="payment-icon" style="background: #2E7D32;"><i class="fa-solid fa-cash-register"></i></div>
+                        <div class="payment-info">
+                            <span class="payment-name">Pay at Counter</span>
+                            <span class="payment-description">Cash or QR payment upon collection</span>
+                        </div>
+                        <div class="radio-circle"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="order-summary-container">
+            <h2>Order Summary</h2>
+            <div class="order-items">
+                <div>
+                    <span id="order-quantity">3x</span>
+                    <span id="order-items">CEO Latte</span>
+                </div>
+                <span id="order-price">RM xxx.xx</span>
+            </div>
+            <div class="order-items">
+                <div>
+                    <span id="order-quantity">3x</span>
+                    <span id="order-items">CEO Latte</span>
+                </div>
+                <span id="order-price">RM xxx.xx</span>
+            </div>
+            <div class="order-items">
+                <div>
+                    <span id="order-quantity">3x</span>
+                    <span id="order-items">CEO Latte</span>
+                </div>
+                <span id="order-price">RM xxx.xx</span>
+            </div>
+            <div class="split-line"></div>
+            <div class="order-subtotal">
+                <span>Subtotal</span>
+                <span id="order-subtotal">RM xxx.xx
+            </div>
+            <div class="order-tax">
+                <span>SST (6%)</span>
+                <span id="order-tax">RM xxx.xx
+            </div>
+            <div class="split-line"></div>
+            <div class="order-total">
+                <span>Total</span>
+                <span id="order-total">RM xxx.xx
+            </div>
+            <button id="order-button">Place Order</button>
+        </div>
+    </main>
+
+    <script>
+        $('#card-number').on('input', function() {
+            let raw_value = $(this).val().replace(/\D/g, '');
+            let $icon = $('#card-brand-icon');
+
+            let formatted_value = raw_value.match(/.{1,4}/g);
+            if (formatted_value) {
+                $(this).val(formatted_value.join(' '));
+            } else {
+                $(this).val(raw_value); 
+            }
+
+            $icon.removeClass().addClass('fa-solid fa-credit-card');
+
+            if (raw_value.length >= 1) { 
+                if (/^4/.test(raw_value)) {
+                    $icon.removeClass()
+                        .addClass('fa-brands fa-cc-visa brand-visa');
+                }       
+                else if (/^5[1-5]/.test(raw_value) || /^2[2-7]/.test(raw_value)) {
+                    $icon.removeClass()
+                        .addClass('fa-brands fa-cc-mastercard brand-mastercard');
+                }             
+                else {
+                    $icon.addClass('fa-solid fa-credit-card');
+                }
+            }
+        });
+
+        function formatCardExpiry(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.length > 2) {
+                value = value.substring(0, 2) + ' / ' + value.substring(2, 4);
+            }
+            input.value = value;
+        }
+
+        $('#card-cvc').on('input', function() {
+            this.value = this.value.replace(/\D/g, '');
+        });
+    </script>
+</body>
+</html>
