@@ -427,6 +427,7 @@
                                 <span>GrabPay</span>
                             </label>
                             <label class="sub-option-card">
+                                <input type="radio" name="ewallet_provider" value="ShopeePay">
                                 <img src="../../Icon/shopeepay.png" alt="ShopeePay">
                                 <span>ShopeePay</span>
                             </label>
@@ -692,7 +693,33 @@
                     }
                 }
 
-                displayToast("Order placed successfully!", "success");
+                const totalText = $('#order-total').text();
+                const totalAmount = parseFloat(totalText.replace('RM', '').trim());
+
+                if (totalAmount > 0) {
+                    $.ajax({
+                        url: '../../Controller/AuthController.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            action: 'create_bill',
+                            total: totalAmount
+                        },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                window.location.href = response.bill_url;
+                            } else {
+                                displayToast(response.message || 'Failed to create payment bill.', 'error');
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error('AJAX error creating bill:', xhr.responseText);
+                            displayToast('An error occurred while trying to create the payment bill.', 'error');
+                        }
+                    });
+                } else if (paymentMethod !== 'counter') {
+                    displayToast("Cannot proceed with a total of zero.", "error");
+                }
             });
         });
     </script>

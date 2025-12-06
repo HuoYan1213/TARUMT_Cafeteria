@@ -84,17 +84,13 @@ $(document).ready(function() {
         $('.payment-card').removeClass('active');
         $(this).closest('.payment-card').addClass('active');
 
-        $('.payment-details').slideUp(200);
+        const selectedValue = $(this).val();
+        const targetDetailsId = '#' + selectedValue + '-details';
 
-        let selectedValue = $(this).val();
-        if (selectedValue === 'e-wallet') {
-            $('#e-wallet-details').slideDown(300);
-        } 
-        else if (selectedValue === 'card') {
-            $('#card-details').slideDown(300);
-        }
-        else if (selectedValue === 'fpx') {
-            $('#fpx-details').slideDown(300);
+        $('.payment-details').not(targetDetailsId).slideUp(200);
+
+        if (selectedValue && selectedValue !== 'counter') {
+            $(targetDetailsId).slideDown(300);
         }
     });
 

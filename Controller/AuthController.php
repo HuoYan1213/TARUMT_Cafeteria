@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../Model/db.php';
 require_once __DIR__ . '/../Helper/IDHelper.php';
+require_once __DIR__ . '/../API/Billplz.php';
 
 session_start();
 
@@ -14,7 +15,7 @@ class AuthController {
     }
 
     public function handleRequest() {
-        $action = isset($_POST['action']) ? $_POST['action'] : '';
+        $action = isset($_POST['action']) ? $_POST['action'] : (isset($_GET['action']) ? $_GET['action'] : '');
 
         if ($action === 'get_products') {
             $this->getProducts();
@@ -37,6 +38,89 @@ class AuthController {
         elseif ($action === 'batch_delete_items') {
             $this->batchDeleteItems();
         }
+        elseif ($action === 'create_bill') {
+            $this->create_bill();
+        } 
+        elseif ($action === 'handle_callback') {
+            $this->handle_callback();
+        }
+    }
+
+    private function create_bill() {
+        header('Content-Type: application/json');
+
+        if (empty(BILLPLZ_COLLECTION_ID)) {
+            echo json_encode(['status' => 'error', 'message' => 'Billplz Collection ID is not set in API/Billplz.php. Please create a collection in your Billplz Sandbox dashboard and add the ID.']);
+            exit;
+        }
+
+        $total_amount = isset($_POST['total']) ? floatval($_POST['total']) : 0;
+        if ($total_amount <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid total amount.']);
+            exit;
+        }
+
+        $user = $this->getUserDetails();
+        if (!$user) {
+            echo json_encode(['status' => 'error', 'message' => 'User not authenticated.']);
+            exit;
+        }
+
+        $post_data = [
+            'collection_id' => BILLPLZ_COLLECTION_ID,
+            'email' => $user['Email'],
+            'name' => $user['User_Name'],
+            'amount' => $total_amount * 100, // Amount in cents
+            'callback_url' => "http://{$_SERVER['HTTP_HOST']}/TARUMT_Cafeteria/Controller/AuthController.php?action=handle_callback",
+            'redirect_url' => "http://{$_SERVER['HTTP_HOST']}/TARUMT_Cafeteria/View/Auth/payment_status.html",
+            'description' => 'Payment for order at TARUMT Cafeteria'
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, BILLPLZ_API_URL . 'bills');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+        curl_setopt($ch, CURLOPT_USERPWD, BILLPLZ_API_KEY . ":");
+        $result = curl_exec($ch);
+        $err = curl_error($ch);
+        
+        if ($err) {
+            echo json_encode(['status' => 'error', 'message' => 'cURL Error: ' . $err]);
+            exit;
+        }
+
+        $decoded_result = json_decode($result, true);
+
+        if (isset($decoded_result['url'])) {
+            echo json_encode(['status' => 'success', 'bill_url' => $decoded_result['url']]);
+        } else {
+            $error_message = 'Failed to create Billplz bill.';
+            if (isset($decoded_result['error']['type'])) {
+                $error_message .= ' Error: ' . $decoded_result['error']['type'] . ' - ' . implode(', ', $decoded_result['error']['message']);
+            }
+            echo json_encode(['status' => 'error', 'message' => $error_message, 'details' => $decoded_result]);
+        }
+        exit;
+    }
+
+    private function handle_callback() {
+        $data = $_POST;
+    }
+
+    private function getUserDetails() {
+        if ($this->user_id === 0) {
+            return null;
+        }
+        $sql = "SELECT User_Name, Email FROM users WHERE User_ID = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $this->user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result->num_rows > 0) {
+            return $result->fetch_assoc();
+        }
+        return null;
     }
 
     private function batchDeleteItems() {

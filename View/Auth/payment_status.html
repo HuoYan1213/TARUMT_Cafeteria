@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Status</title>
+    <link rel="stylesheet" href="../../CSS/auth.css">
+    <link rel="shortcut icon" href="../../Icon/logo.png">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f9f9f9;
+            font-family: var(--lora);
+        }
+        .status-container {
+            text-align: center;
+            padding: 40px;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: var(--text-primary);
+            font-family: var(--playfair-display);
+        }
+        p {
+            color: var(--text-secondary);
+        }
+        a {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: var(--button-primary-background);
+            color: var(--button-primary-text);
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        a:hover {
+            background-color: var(--button-hover-background);
+        }
+    </style>
+</head>
+<body>
+    <div class="status-container">
+        <h1>Payment Status</h1>
+        <p id="status-message">Your payment status will be updated shortly. Thank you for your order!</p>
+        <a href="navigator.html">Back to Home</a>
+    </div>
+
+    <script>
+        // You can optionally use URL parameters from Billplz to show more details
+        const urlParams = new URLSearchParams(window.location.search);
+        const status = urlParams.get('billplz[paid]');
+        const messageContainer = document.getElementById('status-message');
+
+        if (status === 'true') {
+            messageContainer.textContent = 'Thank you! Your payment was successful.';
+        } else if (status === 'false') {
+            messageContainer.textContent = 'Your payment failed or was cancelled. Please try again.';
+        }
+    </script>
+</body>
+</html>
