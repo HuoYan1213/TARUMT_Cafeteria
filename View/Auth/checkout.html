@@ -100,11 +100,12 @@
         }
 
         .order-subtotal, .order-tax {
-            font-weight: 600;;
+            font-weight: 600;
+            font-size: 14px
         }
 
         .order-total {
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 900;
             color: var(--text-primary);
             margin-bottom: 20px;
@@ -397,7 +398,7 @@
 </head>
 <body class="checkout">
     <header>
-        <button>‹ Back</button>
+        <button onclick="window.location.href='navigator.html'">‹ Back</button>
     </header>
     <main>
         <div class="payment-method-container">
@@ -629,7 +630,7 @@
                         `;
                     });
                 } else {
-                    itemsHtml = '<p>No items selected for checkout.</p>';
+                    itemsHtml = '<p class="no-items-found">No items selected for checkout.</p>';
                 }
 
                 const tax = subtotal * 0.06;
@@ -655,6 +656,44 @@
                     <button id="order-button" ${!items || items.length === 0 ? 'disabled' : ''}>Place Order</button>
                 `);
             }
+
+            $('.payment-card').on('click', function() {
+                $(this).find('input[name="method-type"]').prop('checked', true).trigger('change');
+            });
+
+            $('.order-summary-container').on('click', '#order-button', function() {
+                const paymentMethod = $('input[name="method-type"]:checked').val();
+
+                if (!paymentMethod) {
+                    displayToast("Please select a payment method.", "error");
+                    return;
+                }
+
+                if (paymentMethod === 'e-wallet') {
+                    const ewalletProvider = $('input[name="ewallet_provider"]:checked').val();
+                    if (!ewalletProvider) {
+                        displayToast("Please select an e-wallet provider.", "error");
+                        return;
+                    }
+                } else if (paymentMethod === 'card') {
+                    const cardNumber = $('#card-number').val().replace(/\s/g, '');
+                    const cardExpiry = $('#card-expiry').val();
+                    const cardCvc = $('#card-cvc').val();
+
+                    if (cardNumber.length < 13 || !/^\d{2} \/ \d{2}$/.test(cardExpiry) || !/^\d{3,4}$/.test(cardCvc)) {
+                        displayToast("Please fill in all valid card details.", "error");
+                        return;
+                    }
+                } else if (paymentMethod === 'fpx') {
+                    const bankProvider = $('input[name="bank_provider"]:checked').val();
+                    if (!bankProvider) {
+                        displayToast("Please select a bank for FPX payment.", "error");
+                        return;
+                    }
+                }
+
+                displayToast("Order placed successfully!", "success");
+            });
         });
     </script>
 </body>
