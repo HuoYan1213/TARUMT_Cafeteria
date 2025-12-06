@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../Model/db.php';
 require_once __DIR__ . '/../Helper/IDHelper.php';
-require_once __DIR__ . '/../API/Billplz.php';
 
 session_start();
 
@@ -38,74 +37,71 @@ class AuthController {
         elseif ($action === 'batch_delete_items') {
             $this->batchDeleteItems();
         }
-        elseif ($action === 'create_bill') {
-            $this->create_bill();
-        } 
-        elseif ($action === 'handle_callback') {
-            $this->handle_callback();
+        elseif ($action === 'get_user_details') {
+            $this->getUserDetails();
+        }
+        elseif ($action === 'place_order') {
+            $this->placeOrder();
         }
     }
 
-    private function create_bill() {
+    private function placeOrder() {
         header('Content-Type: application/json');
 
-        if (empty(BILLPLZ_COLLECTION_ID)) {
-            echo json_encode(['status' => 'error', 'message' => 'Billplz Collection ID is not set in API/Billplz.php. Please create a collection in your Billplz Sandbox dashboard and add the ID.']);
+        // 1. 獲取購物車
+        $cart_id = $this->getCart($this->user_id);
+        if (!$cart_id) {
+            echo json_encode(['status' => 'error', 'message' => 'Cart not found']);
             exit;
         }
 
-        $total_amount = isset($_POST['total']) ? floatval($_POST['total']) : 0;
-        if ($total_amount <= 0) {
-            echo json_encode(['status' => 'error', 'message' => 'Invalid total amount.']);
-            exit;
-        }
-
-        $user = $this->getUserDetails();
-        if (!$user) {
-            echo json_encode(['status' => 'error', 'message' => 'User not authenticated.']);
-            exit;
-        }
-
-        $post_data = [
-            'collection_id' => BILLPLZ_COLLECTION_ID,
-            'email' => $user['Email'],
-            'name' => $user['User_Name'],
-            'amount' => $total_amount * 100, // Amount in cents
-            'callback_url' => "http://{$_SERVER['HTTP_HOST']}/TARUMT_Cafeteria/Controller/AuthController.php?action=handle_callback",
-            'redirect_url' => "http://{$_SERVER['HTTP_HOST']}/TARUMT_Cafeteria/View/Auth/payment_status.html",
-            'description' => 'Payment for order at TARUMT Cafeteria'
-        ];
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, BILLPLZ_API_URL . 'bills');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-        curl_setopt($ch, CURLOPT_USERPWD, BILLPLZ_API_KEY . ":");
-        $result = curl_exec($ch);
-        $err = curl_error($ch);
+        // 2. 獲取總金額 (為了安全，後端重算一次)
+        $sql_total = "SELECT SUM(Subtotal) as Total FROM cart_products WHERE Cart_ID = ?";
+        $stmt = $this->conn->prepare($sql_total);
+        $stmt->bind_param("s", $cart_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $subtotal = $row['Total'] ?? 0;
         
-        if ($err) {
-            echo json_encode(['status' => 'error', 'message' => 'cURL Error: ' . $err]);
+        if ($subtotal <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Cart is empty']);
             exit;
         }
 
-        $decoded_result = json_decode($result, true);
+        $tax = $subtotal * 0.06;
+        $final_total = $subtotal + $tax;
 
-        if (isset($decoded_result['url'])) {
-            echo json_encode(['status' => 'success', 'bill_url' => $decoded_result['url']]);
+        // 3. 生成訂單 (假設您有 orders 表)
+        // 注意：這裡需要根據您的 IDHelper 生成 Order ID
+        $order_id = IDHelper::generate($this->conn, 'orders', 'Order_ID', 'ORD');
+        $current_time = date('Y-m-d H:i:s');
+        $status = 'Pending'; // 或者 'Completed'，看您是否當作貨到付款
+
+        $sql_order = "INSERT INTO orders (Order_ID, User_ID, Created_At, Total_Amount, Status) VALUES (?, ?, ?, ?, ?)";
+        $stmt = $this->conn->prepare($sql_order);
+        $stmt->bind_param("sisds", $order_id, $this->user_id, $current_time, $final_total, $status);
+
+        if ($stmt->execute()) {
+            // 4. 把購物車商品移到 order_details (假設您有這個表)
+            // 這裡做一個簡單的 INSERT SELECT 操作
+            $sql_move = "INSERT INTO order_details (Order_ID, Product_ID, Quantity, Subtotal)
+                        SELECT ?, Product_ID, Quantity, Subtotal FROM cart_products WHERE Cart_ID = ?";
+            $stmt_move = $this->conn->prepare($sql_move);
+            $stmt_move->bind_param("ss", $order_id, $cart_id);
+            $stmt_move->execute();
+
+            // 5. 清空購物車
+            $sql_clear = "DELETE FROM cart_products WHERE Cart_ID = ?";
+            $stmt_clear = $this->conn->prepare($sql_clear);
+            $stmt_clear->bind_param("s", $cart_id);
+            $stmt_clear->execute();
+
+            echo json_encode(['status' => 'success', 'message' => 'Order placed successfully', 'order_id' => $order_id]);
         } else {
-            $error_message = 'Failed to create Billplz bill.';
-            if (isset($decoded_result['error']['type'])) {
-                $error_message .= ' Error: ' . $decoded_result['error']['type'] . ' - ' . implode(', ', $decoded_result['error']['message']);
-            }
-            echo json_encode(['status' => 'error', 'message' => $error_message, 'details' => $decoded_result]);
+            echo json_encode(['status' => 'error', 'message' => 'Failed to create order']);
         }
         exit;
-    }
-
-    private function handle_callback() {
-        $data = $_POST;
     }
 
     private function getUserDetails() {
