@@ -265,7 +265,7 @@
 
         .sub-option-grid, .bank-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 10px;
         }
 
@@ -410,7 +410,7 @@
                         <div class="payment-icon" style="background: #005EB8;"><i class="fa-solid fa-wallet"></i></div>
                         <div class="payment-info">
                             <span class="payment-name">E-Wallet</span>
-                            <span class="payment-description">Touch 'n Go, GrabPay, ShopeePay...</span>
+                            <span class="payment-description">Touch 'n Go, GrabPay...</span>
                         </div>
                         <div class="radio-circle"></div>
                     </label>
@@ -425,11 +425,6 @@
                                 <input type="radio" name="ewallet_provider" value="GrabPay">
                                 <img src="../../Icon/grabpay.png" alt="GrabPay">
                                 <span>GrabPay</span>
-                            </label>
-                            <label class="sub-option-card">
-                                <input type="radio" name="ewallet_provider" value="ShopeePay">
-                                <img src="../../Icon/shopeepay.png" alt="ShopeePay">
-                                <span>ShopeePay</span>
                             </label>
                             <label class="sub-option-card">
                                 <input type="radio" name="ewallet_provider" value="AliPay">
@@ -472,7 +467,7 @@
                         <div class="payment-icon" style="background: #8A2BE2;"><i class="fa-solid fa-building-columns"></i></div>
                         <div class="payment-info">
                             <span class="payment-name">Online Banking (FPX)</span>
-                            <span class="payment-description">Maybank, CIMB, Public Bank...</span>
+                            <span class="payment-description">Maybank, Public Bank...</span>
                         </div>
                         <div class="radio-circle"></div>
                     </label>
@@ -485,12 +480,6 @@
                                 <span>Maybank</span>
                             </label>
                             
-                            <label class="bank-option">
-                                <input type="radio" name="bank_provider" value="CIMB Clicks">
-                                <img src="../../Icon/cimb.png" alt="CIMB">                    
-                                <span>CIMB</span>
-                            </label>
-
                             <label class="bank-option">
                                 <input type="radio" name="bank_provider" value="PBe">
                                 <img src="../../Icon/publicbank.png" alt="Public Bank">
@@ -509,11 +498,6 @@
                                 <span>Hong Leong<br>(HLB Connect)</span>
                             </label>
 
-                            <label class="bank-option">
-                                <input type="radio" name="bank_provider" value="AmOnline">
-                                <img src="../../Icon/ambank.jpeg" alt="AmBank">
-                                <span>AmBank</span>
-                            </label>
                         </div>
                     </div>
                 </div>
@@ -697,24 +681,27 @@
                 const totalAmount = parseFloat(totalText.replace('RM', '').trim());
 
                 if (totalAmount > 0) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const productIds = urlParams.get('products');
+
                     $.ajax({
                         url: '../../Controller/AuthController.php',
                         type: 'POST',
                         dataType: 'json',
                         data: {
-                            action: 'create_bill',
-                            total: totalAmount
+                            action: 'place_order'
                         },
                         success: function(response) {
                             if (response.status === 'success') {
-                                window.location.href = response.bill_url;
+                                displayToast(response.message, 'success');
+                                window.location.href = 'history.html'; // Redirect to history page
                             } else {
-                                displayToast(response.message || 'Failed to create payment bill.', 'error');
+                                displayToast(response.message || 'Failed to place order.', 'error');
                             }
                         },
                         error: function(xhr) {
-                            console.error('AJAX error creating bill:', xhr.responseText);
-                            displayToast('An error occurred while trying to create the payment bill.', 'error');
+                            console.error('AJAX error placing order:', xhr.responseText);
+                            displayToast('An error occurred while trying to place the order.', 'error');
                         }
                     });
                 } else if (paymentMethod !== 'counter') {
