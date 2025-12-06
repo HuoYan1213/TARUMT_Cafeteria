@@ -39,6 +39,6 @@ class IDHelper {
             $new_number = 1;
         }
         
-        return $prefix . str_pad($new_number, 4, "0", STR_PAD_LEFT);
+        return $prefix . str_pad($new_number, 3, "0", STR_PAD_LEFT);
     }
 }
