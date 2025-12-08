@@ -26,12 +26,33 @@
 
     <script>
         $(document).ready(function () {
-            const urlParams = new URLSearchParams(window.location.search);
-            const pageParam = urlParams.get('page');
-            let page_to_load = pageParam ? pageParam + '.html' : "home.html";
+            // Check user session status first
+            $.ajax({
+                url: '../../Controller/AuthController.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'check_session'
+                },
+                success: function(response) {
+                    if (response.status === 'success' && response.loggedIn) {
+                        // User is logged in, proceed to load the page content
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const pageParam = urlParams.get('page');
+                        let page_to_load = pageParam ? pageParam + '.html' : "home.html";
 
-            $('#ajax-result').load(page_to_load);
-            $("nav .ajax-button[data-get='" + page_to_load + "']").addClass("enabled");
+                        $('#ajax-result').load(page_to_load);
+                        $("nav .ajax-button[data-get='" + page_to_load + "']").addClass("enabled");
+                    } else {
+                        // User is not logged in, redirect to login page
+                        window.location.href = '../Public/login.html';
+                    }
+                },
+                error: function() {
+                    // On AJAX error, redirect to login as a fallback
+                    window.location.href = '../Public/login.html';
+                }
+            });
         });
 
         $(document).on('click', 'nav .ajax-button', function() {

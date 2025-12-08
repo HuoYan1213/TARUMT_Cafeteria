@@ -9,7 +9,7 @@
     <div class="category-group">
         <button id="coffee-series" class="ajax-button active" data-category="Coffee">Coffees</button>
         <button id="tea-series" class="ajax-button" data-category="Tea">Teas</button>
-        <button id="pastries-series" class="ajax-button" data-category="Pastries">Pastries</button>
+        <button id="lightbite-series" class="ajax-button" data-category="LightBite">Light Bites</button>
         <button id="hotmeal-series" class="ajax-button" data-category="HotMeal">Hot Meals</button>
     </div>
     <section id="category-content"></section>
@@ -21,7 +21,7 @@
             $('#category-content').html('<span id="loading-text">Loading...</p>');
 
             $.ajax({
-                url: '../../../Controller/AuthController.php', 
+                url: '../../Controller/AuthController.php', 
                 type: 'POST',
                 data: {
                     action: 'get_products',
@@ -60,7 +60,7 @@
             $button.prop('disabled', true).text('Adding...');
 
             $.ajax({
-                url: '../../../Controller/AuthController.php',
+                url: '../../Controller/AuthController.php',
                 type: 'POST',
                 dataType: 'json', 
                 data: { 

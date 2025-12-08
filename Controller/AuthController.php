@@ -52,6 +52,12 @@ class AuthController {
         elseif ($action === 'get_order_details') {
             $this->getOrderDetails();
         }
+        elseif ($action === 'get_top_sales') {
+            $this->getTopSales();
+        }
+        elseif ($action === 'check_session') {
+            $this->checkSession();
+        }
     }
 
     private function handlePlaceOrder() {
@@ -66,6 +72,12 @@ class AuthController {
         // Case 2: E-wallet payment confirmation from confirmation.html
         elseif ($order_id) {
             $this->confirmEWalletOrder($order_id);
+        }
+        // Case for FPX
+        elseif ($payment_method === 'fpx-initiate') {
+            $this->initiateEWalletOrder(); // Can reuse the same logic as e-wallet
+        } elseif ($payment_method === 'fpx-confirm' && $order_id) {
+            $this->confirmEWalletOrder($order_id); // Can reuse the same logic
         }
         // Case 3: Traditional order placement (e.g., Pay at Counter)
         else {
@@ -179,12 +191,18 @@ class AuthController {
         $sql_insert_order_product = "INSERT INTO order_products (Order_Product_ID, Order_ID, Product_ID, Quantity, Subtotal) VALUES (?, ?, ?, ?, ?)";
         $stmt_insert_order_product = $this->conn->prepare($sql_insert_order_product);
 
+        $sql_update_bestsale = "UPDATE products SET Best_Sale = Best_Sale + ? WHERE Product_ID = ?";
+        $stmt_update_bestsale = $this->conn->prepare($sql_update_bestsale);
+
         while ($cart_product = $cart_products_result->fetch_assoc()) {
             $order_product_id = IDHelper::generate($this->conn, 'order_products', 'Order_Product_ID', 'OPI');
             $product_id = $cart_product['Product_ID'];
             $quantity = $cart_product['Quantity'];
             $subtotal_item = $cart_product['Subtotal'];
 
+            // Update Best_Sale count for the product
+            $stmt_update_bestsale->bind_param("ii", $quantity, $product_id);
+            $stmt_update_bestsale->execute();
             $stmt_insert_order_product->bind_param("ssiid", $order_product_id, $order_id, $product_id, $quantity, $subtotal_item);
             $stmt_insert_order_product->execute();
         }
@@ -289,6 +307,41 @@ class AuthController {
     
         $order_info['items'] = $items;
         echo json_encode(['status' => 'success', 'data' => $order_info]);
+        exit;
+    }
+
+    private function getTopSales() {
+        header('Content-Type: application/json');
+        
+        $sql = "SELECT Product_Name, Price, Image_Path 
+                FROM products 
+                ORDER BY Best_Sale DESC 
+                LIMIT 3";
+                
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $top_sales = [];
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $top_sales[] = [
+                    'name' => $row['Product_Name'],
+                    'price' => $row['Price'],
+                    'image' => $row['Image_Path']
+                ];
+            }
+        }
+        echo json_encode(['status' => 'success', 'data' => $top_sales]);
+    }
+
+    private function checkSession() {
+        header('Content-Type: application/json');
+        if (isset($_SESSION['user_id']) && $_SESSION['user_id'] > 0) {
+            echo json_encode(['status' => 'success', 'loggedIn' => true]);
+        } else {
+            echo json_encode(['status' => 'success', 'loggedIn' => false]);
+        }
         exit;
     }
 
@@ -537,7 +590,6 @@ class AuthController {
                 $name = htmlspecialchars($row['Product_Name']);
                 $price = number_format($row['Price'], 2);
                 $description = htmlspecialchars($row['Description']);
-                $stock = htmlspecialchars($row['Stock']);
                 $image = htmlspecialchars($row['Image_Path']);
 
                 echo '
@@ -552,7 +604,6 @@ class AuthController {
                     </div>
                     <div class="right-items">
                         <button class="add-cart-button" data-id="'.$id.'">Add To Cart +</button>
-                        <span>Remains: '.$stock.'</span>
                     </div>
                 </div>';
             }

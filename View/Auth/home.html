@@ -12,32 +12,48 @@
 <div class="top-sales-card">
     <h1>Today Top Sales</h1>
     <div class="top-sales-group">
-        <div class="top-sales-items">
-            <img src="#">
-            <div class="item-content">
-                <span>Item Name</span>
-                <span>RM xx.xx</span>
-            </div>
-        </div>
-        <div class="top-sales-items">
-            <img src="#">
-            <div class="item-content">
-                <span>Item Name</span>
-                <span>RM xx.xx</span>
-            </div>
-        </div>
-        <div class="top-sales-items">
-            <img src="#">
-            <div class="item-content">
-                <span>Item Name</span>
-                <span>RM xx.xx</span>
-            </div>
-        </div>
+        <!-- Top sales items will be loaded here by AJAX -->
     </div>
 </div>
 
 <script>
     $(document).ready(function() {
+        // Function to load top sales
+        function loadTopSales() {
+            const container = $('.top-sales-group');
+            container.html('<p>Loading top sales...</p>'); // Loading state
+
+            $.ajax({
+                url: '../../Controller/AuthController.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'get_top_sales'
+                },
+                success: function(response) {
+                    container.empty(); // Clear loading state
+                    if (response.status === 'success' && response.data.length > 0) {
+                        response.data.forEach(item => {
+                            const itemHtml = `
+                                <div class="top-sales-items">
+                                    <img src="../../Image/Product/${item.image}" alt="${item.name}">
+                                    <div class="item-content">
+                                        <span id="item-name">${item.name}</span>
+                                        <span id="item-price">RM ${parseFloat(item.price).toFixed(2)}</span>
+                                    </div>
+                                </div>`;
+                            container.append(itemHtml);
+                        });
+                    } else {
+                        container.html('<p>No top sales to display right now.</p>');
+                    }
+                },
+                error: function() {
+                    container.html('<p>Could not load top sales.</p>');
+                }
+            });
+        }
+
         $('#start-order-button').on('click', function() {
             var page = 'menu.html';
             
@@ -45,5 +61,8 @@
             $('nav .ajax-button').removeClass("enabled");   
             $('nav .ajax-button[data-get="' + page + '"]').addClass("enabled");
         });
+
+        // Load top sales when the page is ready
+        loadTopSales();
     });
 </script>

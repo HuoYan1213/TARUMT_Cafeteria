@@ -714,6 +714,32 @@
                         displayToast("Please select a bank for FPX payment.", "error");
                         return;
                     }
+
+                    const totalText = $('#order-total').text();
+                    const totalAmount = parseFloat(totalText.replace('RM', '').trim());
+
+                    // Initiate an order with 'Pending' status for FPX
+                    $.ajax({
+                        url: '../../Controller/AuthController.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            action: 'place_order',
+                            payment_method: 'fpx-initiate',
+                            total_amount: totalAmount
+                        },
+                        success: function(response) {
+                            if (response.status === 'success' && response.order_id) {
+                                // Redirect to the mock banking page
+                                const bankingUrl = `banking.html?oid=${response.order_id}&bank=${bankProvider}`;
+                                window.location.href = bankingUrl;
+                            } else {
+                                displayToast(response.message || 'Could not initiate FPX payment.', 'error');
+                            }
+                        },
+                        error: function() { displayToast('An error occurred while initiating FPX payment.', 'error'); }
+                    });
+                    return; // Stop further execution
                 }
 
                 const totalText = $('#order-total').text();
@@ -728,7 +754,8 @@
                         type: 'POST',
                         dataType: 'json',
                         data: {
-                            action: 'place_order'
+                            action: 'place_order',
+                            product_ids: productIds ? productIds.split(',') : []
                         },
                         success: function(response) {
                             if (response.status === 'success') {

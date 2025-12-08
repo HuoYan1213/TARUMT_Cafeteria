@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="shortcut icon" href="../../Icon/fpxicon.png">
+    <title>FPX</title>
+    <style>
+        body {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 20px 30px;
+            gap: 20px;
+        }
+
+        header img {
+            width: 160px;
+        }
+
+        #fpx-icon {
+            width: 100px;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #DADADA;
+            border-radius: 8px;
+            padding: 40px 30px;
+            margin: auto;
+            width: 80%;
+            max-width: 700px;
+            box-sizing: border-box;
+            box-shadow: 0 0 10px #00000020;
+        }
+
+        .online-banking-container {
+            display: flex;
+            width: 100%;
+        }
+
+        .login-section {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            gap: 30px;
+        }
+
+        .login-section h1 {
+            margin: 0;
+            padding: 0;
+            font-weight: 500;
+            font-size: 30px;
+        }
+
+        .login-section span {
+            font-size: 14px;
+            color: #333333;
+            margin-left: auto;
+            margin-bottom: 10px;
+        }
+
+        .login-input {
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            margin: auto;
+            gap: 15px;
+            border: 1px solid #BBBBBB;
+            padding: 10px 15px;
+            width: 95%;
+            border-radius: 5px;
+        }
+
+        .fa-solid {
+            color: #555555;
+        }
+
+        .login-input input {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-size: 14px
+        }
+
+        .login-section button {
+            margin-top: 25px;
+            margin-left: auto;
+            border: none;
+            outline: none;
+            background: #EC1C24;
+            color: #FFFFFF;
+            font-size: 16px;
+            padding: 12px 20px;
+            width: fit-content;
+            border-radius: 3px;
+            cursor: pointer
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img id="online-banking" src="../../Icon/publicbankwithname.jpg" alt="Public Bank">
+        <img id="fpx-icon" src="../../Icon/fpx.png" alt="">
+    </header>
+    
+    <main>
+        <div class="online-banking-container">
+            <div class="login-section">
+                <h1>Login to XXX</h1>
+                <span>Tuesday, dd MMMM yyyy hh:mm:ss</span>
+                <div class="login-input">
+                    <i class="fa-solid fa-user"></i>
+                    <input type="text" placeholder="Username">
+                </div>
+                <div class="login-input">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" placeholder="Password">
+                </div>
+                <button id="confirm-button">Confirm</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../../JS/script.js"></script>
+    <script>
+        $(document).ready(function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderId = urlParams.get('oid');
+            const bank = urlParams.get('bank');
+
+            const bankData = {
+                'Maybank2u': { name: "Maybank2u", logo: "../../Icon/maybankwithname.png", color: "#FFB81C" },
+                'PBe': { name: "PBe", logo: "../../Icon/publicbankwithname.jpg", color: "#EC1C24" },
+                'RHB Online Banking': { name: "RHB Now", logo: "../../Icon/rhbwithname.png", color: "#007BC2" },
+                'Hong Leong Connect': { name: "HLB Connect", logo: "../../Icon/hlbwithname.png", color: "#ED1B2E" }
+            };
+
+            // Update page based on bank
+            if (bank && bankData[bank]) {
+                const data = bankData[bank];
+                $('#online-banking').attr('src', data.logo).attr('alt', data.name);
+                $('.login-section h1').text(`Login to ${data.name}`);
+                $('#confirm-button').css('background-color', data.color);
+            } else {
+                $('main').html('<h1>Invalid Bank Selection</h1>');
+            }
+
+            // Update date and time
+            function updateDateTime() {
+                const now = new Date();
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                $('.login-section span').text(now.toLocaleDateString('en-US', options));
+            }
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+
+            // Handle confirm button click
+            $('#confirm-button').on('click', function() {
+                const username = $('input[type="text"]').val();
+                const password = $('input[type="password"]').val();
+
+                if (!username || !password) {
+                    displayToast("Please enter Username and Password.", "error");
+                    return;
+                }
+
+                const $button = $(this);
+                if ($button.prop('disabled')) return;
+
+                const originalText = $button.text();
+                $button.prop('disabled', true).text('Processing...');
+
+                // Simulate API call to confirm payment
+                $.ajax({
+                    url: '../../Controller/AuthController.php',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'place_order',
+                        payment_method: 'fpx-confirm',
+                        order_id: orderId
+                    },
+                    success: function(response) {
+                        if (response.status === 'success' && response.order_id) {
+                            displayToast("Payment Successful!", "success");
+                            setTimeout(() => {
+                                window.location.href = `receipt.html?orderId=${response.order_id}`;
+                            }, 1500);
+                        } else {
+                            displayToast(response.message || 'Failed to confirm payment.', 'error');
+                            $button.prop('disabled', false).text(originalText);
+                        }
+                    },
+                    error: function() {
+                        displayToast('An error occurred while confirming payment.', 'error');
+                        $button.prop('disabled', false).text(originalText);
+                    }
+                });
+            });
+
+            // Check for required params
+            if (!orderId || !bank) {
+                $('main').html('<h1>Invalid Request</h1><p>Missing order or bank information.</p>');
+            }
+        });
+    </script>
+</body>
+</html>
