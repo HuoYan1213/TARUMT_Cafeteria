@@ -663,23 +663,42 @@
                         return;
                     }
 
-                    let providerShortName = '';
-                    if (ewalletProvider === "Touch'n Go") {
-                        providerShortName = 'tng';
-                    } else if (ewalletProvider === "GrabPay") {
-                        providerShortName = 'grabpay';
-                    } else if (ewalletProvider === "AliPay") {
-                        providerShortName = 'alipay';
-                    } else if (ewalletProvider === "Boost") {
-                        providerShortName = 'boost';
-                    } else if (ewalletProvider === "ShopeePay") {
-                        providerShortName = 'shopeepay';
-                    }
-                    
-                    const currentSearch = window.location.search;
-                    const newSearch = (currentSearch ? currentSearch + '&' : '?') + 'provider=' + providerShortName;
-                    window.location.href = 'payment.html' + newSearch;
-                    return; // Stop further execution
+                    const totalText = $('#order-total').text();
+                    const totalAmount = parseFloat(totalText.replace('RM', '').trim());
+
+                    // 1. Initiate an order with 'Pending Payment' status
+                    $.ajax({
+                        url: '../../Controller/AuthController.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            action: 'place_order',
+                            payment_method: 'e-wallet-initiate',
+                            total_amount: totalAmount
+                        },
+                        success: function(response) {
+                            if (response.status === 'success' && response.order_id) {
+                                // 2. If successful, redirect to payment page with the new Order ID
+                                let providerShortName = '';
+                                if (ewalletProvider === "Touch'n Go") providerShortName = 'tng';
+                                else if (ewalletProvider === "GrabPay") providerShortName = 'grabpay';
+                                else if (ewalletProvider === "AliPay") providerShortName = 'alipay';
+                                else if (ewalletProvider === "Boost") providerShortName = 'boost';
+                                else if (ewalletProvider === "ShopeePay") providerShortName = 'shopeepay';
+                                // Use 'oid' for Order ID
+                                const paymentUrl = `payment.html?oid=${response.order_id}&provider=${providerShortName}`;
+                                window.location.href = paymentUrl;
+
+                            } else {
+                                displayToast(response.message || 'Could not initiate payment.', 'error');
+                            }
+                        },
+                        error: function() {
+                            displayToast('An error occurred while initiating payment.', 'error');
+                        }
+                    });
+
+                    return;
                 } else if (paymentMethod === 'card') {
                     const cardNumber = $('#card-number').val().replace(/\s/g, '');
                     const cardExpiry = $('#card-expiry').val();
@@ -714,8 +733,8 @@
                         success: function(response) {
                             if (response.status === 'success') {
                                 displayToast(response.message, 'success');
-                                if (response.redirect_to) {
-                                    window.location.href = 'navigator.html?page=history';
+                                if (response.order_id) {
+                                    window.location.href = `receipt.html?orderId=${response.order_id}`;
                                 }
                             } else {
                                 displayToast(response.message || 'Failed to place order.', 'error');

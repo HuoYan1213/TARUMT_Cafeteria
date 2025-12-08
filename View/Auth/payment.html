@@ -190,10 +190,12 @@
     </main>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
+        // 引入在 checkout.html 中使用的 displayToast 函數
+        // 假設它定義在 script.js 中
         $(document).ready(function() {
             const urlParams = new URLSearchParams(window.location.search);
+            const orderId = urlParams.get('oid'); // Changed from tid to oid
             const provider = urlParams.get('provider');
-            const productIds = urlParams.get('products');
 
             // 1. Update Provider Info & Theme
             const providerData = {
@@ -269,36 +271,57 @@
             }
             $('#ref-id').text(generateRefId());
 
-            // 4. Fetch and Display Price
-            if (productIds) {
-                $.ajax({
-                    url: '../../Controller/AuthController.php',
-                    type: 'POST',
-                    dataType: 'json',
-                    data: {
-                        action: 'get_checkout_details',
-                        product_ids: productIds.split(',')
-                    },
-                    success: function(response) {
-                        if (response.status === 'success' && response.items.length > 0) {
-                            let subtotal = 0;
-                            response.items.forEach(item => {
-                                subtotal += parseFloat(item.price) * parseInt(item.quantity);
-                            });
-                            const tax = subtotal * 0.06;
-                            const total = subtotal + tax;
+            // 4. Polling function to check payment status
+            function checkStatus() {
+                if (!orderId) return;
 
-                            $('#total-amount').text('RM ' + total.toFixed(2));
-                        } else {
-                            $('#total-amount').text('RM 0.00');
+                $.ajax({
+                    url: `../../Controller/AuthController.php?action=check_payment_status&oid=${orderId}`,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        // Now we directly check the status from the backend
+                        if (response.status === 'Completed') {
+                            // Payment is completed, stop polling and redirect
+                            clearInterval(pollingInterval);
+                            const providerName = providerData[provider]?.name || 'E-Wallet';
+                            const receiptUrl = `receipt.html?amount=${response.amount}&orderId=${response.order_id}&method=${encodeURIComponent(providerName)}`;
+                            window.location.href = receiptUrl;
+                        } else if (response.status !== 'Pending') {
+                            // If status is not 'Pending' and not 'Completed' (e.g., Expired, NotFound), stop polling.
+                            clearInterval(pollingInterval);
+                            console.error("Error checking status:", response.message);
                         }
                     },
                     error: function() {
-                        $('#total-amount').text('RM 0.00');
+                        // Stop polling on server error to prevent infinite loops
+                        clearInterval(pollingInterval);
+                        console.error("Server error while checking payment status.");
                     }
                 });
-            } else {
-                $('#total-amount').text('RM 0.00');
+            }
+
+            // Start polling every 3 seconds
+            const pollingInterval = setInterval(checkStatus, 3000);
+
+            // 5. Fetch initial amount and generate QR code
+            if (orderId) {
+                // We can get the amount from the same status check endpoint
+                $.get(`../../Controller/AuthController.php?action=check_payment_status&oid=${orderId}`, function(response) {
+                    if (response.status === 'Pending' || response.status === 'Completed') {
+                        const total = parseFloat(response.amount);
+                        $('#total-amount').text('RM ' + total.toFixed(2));
+
+                        // Generate QR Code URL
+                        const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+                        const confirmationPageUrl = `${baseUrl}confirmation.html?oid=${orderId}&provider=${provider}`;
+                        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&ecc=H&data=${encodeURIComponent(confirmationPageUrl)}`;
+                        $('#qr-code').attr('src', qrApiUrl);
+                    } else {
+                        $('#total-amount').text('Invalid');
+                        $('.qr-container').hide();
+                    }
+                });
             }
         });
     </script>

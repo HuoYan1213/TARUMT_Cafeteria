@@ -41,21 +41,98 @@ class AuthController {
             $this->getUserDetails();
         }
         elseif ($action === 'place_order') {
-            $this->placeOrder();
+            $this->handlePlaceOrder();
+        }
+        elseif ($action === 'check_payment_status') {
+            $this->checkOrderStatus();
+        }
+        elseif ($action === 'get_confirmation_details') {
+            $this->getOrderConfirmationDetails();
+        }
+        elseif ($action === 'get_order_details') {
+            $this->getOrderDetails();
         }
     }
 
-    private function placeOrder() {
+    private function handlePlaceOrder() {
         header('Content-Type: application/json');
+        $payment_method = isset($_POST['payment_method']) ? $_POST['payment_method'] : null;
+        $order_id = isset($_POST['order_id']) ? $_POST['order_id'] : null;
 
-        // 1. 獲取購物車
+        // Case 1: E-wallet payment initiation from checkout.html
+        if ($payment_method === 'e-wallet-initiate') {
+            $this->initiateEWalletOrder();
+        } 
+        // Case 2: E-wallet payment confirmation from confirmation.html
+        elseif ($order_id) {
+            $this->confirmEWalletOrder($order_id);
+        }
+        // Case 3: Traditional order placement (e.g., Pay at Counter)
+        else {
+            $this->createStandardOrder();
+        }
+    }
+
+    private function initiateEWalletOrder() {
+        $total_amount = isset($_POST['total_amount']) ? floatval($_POST['total_amount']) : 0;
+        if ($total_amount <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid amount.']);
+            exit;
+        }
+
+        $order_id = IDHelper::generate($this->conn, 'orders', 'Order_ID', 'ORD');
+        $current_time = date('Y-m-d H:i:s');
+        $status = 'Pending'; // New status for QR flow
+
+        $sql_order = "INSERT INTO orders (Order_ID, User_ID, Created_At, Total_Amount, Status) VALUES (?, ?, ?, ?, ?)";
+        $stmt = $this->conn->prepare($sql_order);
+        $stmt->bind_param("sisds", $order_id, $this->user_id, $current_time, $total_amount, $status);
+
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'order_id' => $order_id]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to initiate payment.']);
+        }
+        exit;
+    }
+
+    private function confirmEWalletOrder($order_id) {
+        // Find the pending order
+        $sql_order = "SELECT * FROM orders WHERE Order_ID = ? AND Status = 'Pending'";
+        $stmt_order = $this->conn->prepare($sql_order);
+        $stmt_order->bind_param("s", $order_id);
+        $stmt_order->execute();
+        $order_result = $stmt_order->get_result();
+
+        if ($order_result->num_rows === 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid or already processed order.']);
+            exit;
+        }
+        $order = $order_result->fetch_assoc();
+        $user_id_for_cart = $order['User_ID'];
+
+        // Update order status to 'Completed'
+        $sql_update = "UPDATE orders SET Status = 'Completed' WHERE Order_ID = ?";
+        $stmt_update = $this->conn->prepare($sql_update);
+        $stmt_update->bind_param("s", $order_id);
+
+        if ($stmt_update->execute()) {
+            // Move items from cart to order_products and clear cart
+            $this->processCartForOrder($order_id, $user_id_for_cart);
+            echo json_encode(['status' => 'success', 'message' => 'Order placed successfully', 'order_id' => $order_id]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to confirm order.']);
+        }
+        exit;
+    }
+
+    private function createStandardOrder() {
         $cart_id = $this->getCart($this->user_id);
         if (!$cart_id) {
             echo json_encode(['status' => 'error', 'message' => 'Cart not found']);
             exit;
         }
-
-        // 2. 獲取總金額 (為了安全，後端重算一次)
+        // Recalculate total from cart for security
         $sql_total = "SELECT SUM(Subtotal) as Total FROM cart_products WHERE Cart_ID = ?";
         $stmt = $this->conn->prepare($sql_total);
         $stmt->bind_param("s", $cart_id);
@@ -68,52 +145,150 @@ class AuthController {
             echo json_encode(['status' => 'error', 'message' => 'Cart is empty']);
             exit;
         }
-
         $tax = $subtotal * 0.06;
         $final_total = $subtotal + $tax;
 
-        // 3. 生成訂單 (假設您有 orders 表)
-        // 注意：這裡需要根據您的 IDHelper 生成 Order ID
         $order_id = IDHelper::generate($this->conn, 'orders', 'Order_ID', 'ORD');
         $current_time = date('Y-m-d H:i:s');
-        $status = 'Pending'; // 或者 'Completed'，看您是否當作貨到付款
+        $status = 'Completed';
 
         $sql_order = "INSERT INTO orders (Order_ID, User_ID, Created_At, Total_Amount, Status) VALUES (?, ?, ?, ?, ?)";
         $stmt = $this->conn->prepare($sql_order);
         $stmt->bind_param("sisds", $order_id, $this->user_id, $current_time, $final_total, $status);
 
         if ($stmt->execute()) {
-            // 4. 把購物車商品移到 order_products (假設您有這個表)
-            // 這裡需要逐一處理，因為 Order_Product_ID 需要單獨生成
-            $sql_cart_products = "SELECT Product_ID, Quantity, Subtotal FROM cart_products WHERE Cart_ID = ?";
-            $stmt_cart_products = $this->conn->prepare($sql_cart_products);
-            $stmt_cart_products->bind_param("s", $cart_id);
-            $stmt_cart_products->execute();
-            $cart_products_result = $stmt_cart_products->get_result();
-
-            $sql_insert_order_product = "INSERT INTO order_products (Order_Product_ID, Order_ID, Product_ID, Quantity, Subtotal) VALUES (?, ?, ?, ?, ?)";
-            $stmt_insert_order_product = $this->conn->prepare($sql_insert_order_product);
-
-            while ($cart_product = $cart_products_result->fetch_assoc()) {
-                $order_product_id = IDHelper::generate($this->conn, 'order_products', 'Order_Product_ID', 'OPI');
-                $product_id = $cart_product['Product_ID'];
-                $quantity = $cart_product['Quantity'];
-                $subtotal_item = $cart_product['Subtotal'];
-
-                $stmt_insert_order_product->bind_param("ssiid", $order_product_id, $order_id, $product_id, $quantity, $subtotal_item);
-                $stmt_insert_order_product->execute();
-            }
-
-            // 5. 清空購物車
-            $sql_clear = "DELETE FROM cart_products WHERE Cart_ID = ?";
-            $stmt_clear = $this->conn->prepare($sql_clear);
-            $stmt_clear->bind_param("s", $cart_id);
-            $stmt_clear->execute();
-
-            echo json_encode(['status' => 'success', 'message' => 'Order placed successfully', 'order_id' => $order_id, 'redirect_to' => 'history.html']);
+            $this->processCartForOrder($order_id, $this->user_id);
+            echo json_encode(['status' => 'success', 'message' => 'Order placed successfully', 'order_id' => $order_id]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to create order']);
         }
+        exit;
+    }
+
+    private function processCartForOrder($order_id, $user_id) {
+        $cart_id = $this->getCart($user_id);
+        if (!$cart_id) return;
+
+        // Move items from cart to order_products
+        $sql_cart_products = "SELECT Product_ID, Quantity, Subtotal FROM cart_products WHERE Cart_ID = ?";
+        $stmt_cart_products = $this->conn->prepare($sql_cart_products);
+        $stmt_cart_products->bind_param("s", $cart_id);
+        $stmt_cart_products->execute();
+        $cart_products_result = $stmt_cart_products->get_result();
+
+        $sql_insert_order_product = "INSERT INTO order_products (Order_Product_ID, Order_ID, Product_ID, Quantity, Subtotal) VALUES (?, ?, ?, ?, ?)";
+        $stmt_insert_order_product = $this->conn->prepare($sql_insert_order_product);
+
+        while ($cart_product = $cart_products_result->fetch_assoc()) {
+            $order_product_id = IDHelper::generate($this->conn, 'order_products', 'Order_Product_ID', 'OPI');
+            $product_id = $cart_product['Product_ID'];
+            $quantity = $cart_product['Quantity'];
+            $subtotal_item = $cart_product['Subtotal'];
+
+            $stmt_insert_order_product->bind_param("ssiid", $order_product_id, $order_id, $product_id, $quantity, $subtotal_item);
+            $stmt_insert_order_product->execute();
+        }
+
+        // Clear the cart
+        $sql_clear = "DELETE FROM cart_products WHERE Cart_ID = ?";
+        $stmt_clear = $this->conn->prepare($sql_clear);
+        $stmt_clear->bind_param("s", $cart_id);
+        $stmt_clear->execute();
+    }
+
+    private function checkOrderStatus() {
+        header('Content-Type: application/json');
+        $order_id = isset($_GET['oid']) ? $_GET['oid'] : '';
+
+        if (empty($order_id)) {
+            echo json_encode(['status' => 'Error', 'message' => 'Order ID is missing.']);
+            exit;
+        }
+
+        $sql = "SELECT Status, Order_ID, Total_Amount FROM orders WHERE Order_ID = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("s", $order_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($row = $result->fetch_assoc()) {
+            echo json_encode([
+                'status' => $row['Status'], // e.g., 'Pending Payment', 'Completed'
+                'order_id' => $row['Order_ID'],
+                'amount' => $row['Total_Amount']
+            ]);
+        } else {
+            echo json_encode(['status' => 'NotFound', 'message' => 'Order not found.']);
+        }
+        exit;
+    }
+
+    private function getOrderConfirmationDetails() {
+        header('Content-Type: application/json');
+        $order_id = isset($_GET['oid']) ? $_GET['oid'] : '';
+
+        if (empty($order_id)) {
+            echo json_encode(['status' => 'error', 'message' => 'Order ID is missing.']);
+            exit;
+        }
+
+        $sql = "SELECT Total_Amount, Status FROM orders WHERE Order_ID = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("s", $order_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($row = $result->fetch_assoc()) {
+            if ($row['Status'] !== 'Pending') {
+                echo json_encode(['status' => 'error', 'message' => 'This payment has already been processed.']);
+                exit;
+            }
+            echo json_encode(['status' => 'success', 'amount' => $row['Total_Amount']]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Order not found.']);
+        }
+        exit;
+    }
+
+    private function getOrderDetails() {
+        header('Content-Type: application/json');
+        $order_id = isset($_GET['oid']) ? $_GET['oid'] : '';
+    
+        if (empty($order_id)) {
+            echo json_encode(['status' => 'error', 'message' => 'Order ID is missing.']);
+            exit;
+        }
+    
+        // 1. Get main order info
+        $sql_order = "SELECT Order_ID, Created_At, Total_Amount FROM orders WHERE Order_ID = ? AND User_ID = ?";
+        $stmt_order = $this->conn->prepare($sql_order);
+        $stmt_order->bind_param("si", $order_id, $this->user_id);
+        $stmt_order->execute();
+        $result_order = $stmt_order->get_result();
+        $order_info = $result_order->fetch_assoc();
+    
+        if (!$order_info) {
+            echo json_encode(['status' => 'error', 'message' => 'Order not found or access denied.']);
+            exit;
+        }
+    
+        // 2. Get order items
+        $sql_items = "SELECT p.Product_Name, op.Quantity, op.Subtotal
+                      FROM order_products op
+                      JOIN products p ON op.Product_ID = p.Product_ID
+                      WHERE op.Order_ID = ?";
+        $stmt_items = $this->conn->prepare($sql_items);
+        $stmt_items->bind_param("s", $order_id);
+        $stmt_items->execute();
+        $result_items = $stmt_items->get_result();
+        
+        $items = [];
+        while ($row = $result_items->fetch_assoc()) {
+            $items[] = $row;
+        }
+    
+        $order_info['items'] = $items;
+        echo json_encode(['status' => 'success', 'data' => $order_info]);
         exit;
     }
 

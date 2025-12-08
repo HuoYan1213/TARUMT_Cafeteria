@@ -718,6 +718,114 @@ Checkout
 ========== */
 
 
+
+/* ==========
+Receipt
+========== */
+.receipt-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 420px;
+    background: var(--background-card);
+    border-top: 5px solid var(--text-primary);
+    padding: 30px 20px;
+    height: fit-content;
+    margin: 10px auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-shadow: 0 0 10px #00000020;
+}
+
+.tarumt-cafeteria {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.receipt-container img {
+    width: 80px;
+    margin-bottom: 15px;
+}
+
+.receipt-container h1 {
+    color: var(--text-primary);
+    font-family: var(--playfair-display);
+    font-size: 32px;
+    margin: 0;
+    padding: 0;
+    letter-spacing: 2px;
+    font-weight: 700;
+}
+
+.receipt-container h2 {
+    color: var(--text-secondary);
+    font-family: var(--dancing-script);
+    font-weight: 700;
+    font-size: 16px;
+    margin: 0;
+    padding: 0;
+}
+
+.divider-line {
+    border: 1px dashed var(--border-color);
+    width: 100%;
+    margin: 14px 0;
+}
+
+.order-info, .items-list, .total-list {
+    width: 90%;
+    color: var(--text-secondary);
+    font-size: 14px;
+    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--lora);
+    font-weight: 600;
+}
+
+.info-row, .items-row, .total-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;;
+}
+
+.total-amount-row {
+    display: flex;
+    justify-content: space-between;
+    width: 90%;
+    color: var(--text-primary);
+    font-size: 20px;
+    font-family: var(--playfair-display);
+    font-weight: 700;
+    margin-bottom: 35px;
+}
+
+.receipt-container button {
+    font-family: var(--lora);
+    font-size: 16px;
+    font-weight: bold;
+    background: var(--button-primary-background);
+    color: var(--button-primary-text);
+    padding: 10px;
+    width: 100%;
+    letter-spacing: 2px;
+    border: none;
+    border-radius: 8px;
+    box-shadow: var(--shadow-float);
+    transition: all 0.5s ease;
+    cursor: pointer;
+}
+
+.receipt-container button:hover {
+    background: var(--button-hover-background);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(75, 48, 40, 0.3);
+}
+
+
 @media(max-width: 800px) {
     .decoration {
         display: none;
