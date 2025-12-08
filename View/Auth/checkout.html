@@ -357,7 +357,7 @@
             background: transparent;
         }
 
-        .card-number-container:focus-within {
+        .card-number-container:focus-within, .modern-input:focus {
             border-color: #A64B2A;
         }
 
@@ -415,7 +415,7 @@
                         <div class="radio-circle"></div>
                     </label>
                     <div class="payment-details hidden" id="e-wallet-details">
-                        <div class="sub-option-grid">
+                        <div class="sub-option-grid" style="grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));">
                             <label class="sub-option-card">
                                 <input type="radio" name="ewallet_provider" value="Touch'n Go">
                                 <img src="../../Icon/tng.svg" alt="Touch'n Go">
@@ -430,6 +430,16 @@
                                 <input type="radio" name="ewallet_provider" value="AliPay">
                                 <img src="../../Icon/alipay.png" alt="AliPay">
                                 <span>AliPay</span>
+                            </label>
+                            <label class="sub-option-card">
+                                <input type="radio" name="ewallet_provider" value="Boost">
+                                <img src="../../Icon/boosticon.png" alt="Boost">
+                                <span>Boost</span>
+                            </label>
+                            <label class="sub-option-card">
+                                <input type="radio" name="ewallet_provider" value="ShopeePay">
+                                <img src="../../Icon/shopeepay.png" alt="ShopeePay">
+                                <span>ShopeePay</span>
                             </label>
                         </div>
                     </div>
@@ -551,14 +561,6 @@
             }
         });
 
-        function formatCardExpiry(input) {
-            let value = input.value.replace(/\D/g, '');
-            if (value.length > 2) {
-                value = value.substring(0, 2) + ' / ' + value.substring(2, 4);
-            }
-            input.value = value;
-        }
-
         $('#card-cvc').on('input', function() {
             this.value = this.value.replace(/\D/g, '');
         });
@@ -660,12 +662,30 @@
                         displayToast("Please select an e-wallet provider.", "error");
                         return;
                     }
+
+                    let providerShortName = '';
+                    if (ewalletProvider === "Touch'n Go") {
+                        providerShortName = 'tng';
+                    } else if (ewalletProvider === "GrabPay") {
+                        providerShortName = 'grabpay';
+                    } else if (ewalletProvider === "AliPay") {
+                        providerShortName = 'alipay';
+                    } else if (ewalletProvider === "Boost") {
+                        providerShortName = 'boost';
+                    } else if (ewalletProvider === "ShopeePay") {
+                        providerShortName = 'shopeepay';
+                    }
+                    
+                    const currentSearch = window.location.search;
+                    const newSearch = (currentSearch ? currentSearch + '&' : '?') + 'provider=' + providerShortName;
+                    window.location.href = 'payment.html' + newSearch;
+                    return; // Stop further execution
                 } else if (paymentMethod === 'card') {
                     const cardNumber = $('#card-number').val().replace(/\s/g, '');
                     const cardExpiry = $('#card-expiry').val();
                     const cardCvc = $('#card-cvc').val();
 
-                    if (cardNumber.length < 13 || !/^\d{2} \/ \d{2}$/.test(cardExpiry) || !/^\d{3,4}$/.test(cardCvc)) {
+                    if (cardNumber.length < 13 || !/^\d{2} \/ \d{2}$/.test(cardExpiry) || $('#card-expiry').hasClass('input-error') || !/^\d{3,4}$/.test(cardCvc)) {
                         displayToast("Please fill in all valid card details.", "error");
                         return;
                     }

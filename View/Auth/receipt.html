@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background-color: #f4f7f6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0;
+        }
+
+        .receipt-card {
+            background: white;
+            width: 100%; max-width: 380px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            text-align: center;
+            position: relative;
+        }
+
+        /* 頂部綠色勾勾 */
+        .success-icon {
+            width: 60px; height: 60px;
+            background: #e6fffa; color: #047857;
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 30px; margin: 0 auto 15px auto;
+        }
+
+        h2 { margin: 0; color: #333; font-size: 20px; }
+        .subtitle { color: #666; font-size: 14px; margin-top: 5px; }
+
+        .amount {
+            font-size: 32px; font-weight: 800; color: #333;
+            margin: 20px 0;
+        }
+
+        /* 分隔線 */
+        .divider {
+            border-top: 2px dashed #eee; margin: 20px 0;
+            position: relative;
+        }
+        /* 左右兩個圓缺口，模仿真實收據 */
+        .divider::before, .divider::after {
+            content: ''; position: absolute; top: -10px; width: 20px; height: 20px;
+            background: #f4f7f6; border-radius: 50%;
+        }
+        .divider::before { left: -40px; }
+        .divider::after { right: -40px; }
+
+        /* 詳細資料列表 */
+        .details-row {
+            display: flex; justify-content: space-between;
+            font-size: 13px; margin-bottom: 12px;
+        }
+        .label { color: #888; }
+        .value { font-weight: 600; color: #333; }
+
+        .btn-home {
+            background: #333; color: white; border: none;
+            width: 100%; padding: 12px; border-radius: 8px;
+            font-weight: bold; cursor: pointer; margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="receipt-card">
+        <div class="success-icon">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <h2>Payment Successful</h2>
+        <div class="subtitle">Your transaction was completed</div>
+
+        <div class="amount" id="amount-display">RM 0.00</div>
+
+        <div class="divider"></div>
+
+        <div class="details-row">
+            <span class="label">Payment Method</span>
+            <span class="value" id="method-display">E-Wallet</span>
+        </div>
+        <div class="details-row">
+            <span class="label">Ref ID</span>
+            <span class="value" id="ref-id">---</span>
+        </div>
+        <div class="details-row">
+            <span class="label">Date</span>
+            <span class="value" id="date-display">---</span>
+        </div>
+        <div class="details-row">
+            <span class="label">Status</span>
+            <span class="value" style="color:#047857;">Successful</span>
+        </div>
+
+        <br>
+        <button class="btn-home" onclick="window.location.href='navigator.html?page=home'">Back to Home</button>
+    </div>
+
+    <script>
+        // 自動讀取 URL 參數
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // 1. 獲取數據
+        const amount = urlParams.get('amount') || "0.00";
+        const orderId = urlParams.get('orderId') || "ORD-" + Math.floor(Math.random() * 100000);
+        const method = urlParams.get('method') || "DuitNow QR";
+
+        // 2. 顯示在畫面上
+        document.getElementById('amount-display').innerText = "RM " + parseFloat(amount).toFixed(2);
+        document.getElementById('ref-id').innerText = orderId;
+        document.getElementById('method-display').innerText = decodeURIComponent(method); // 解碼 (例如 Touch 'n Go)
+        
+        // 3. 設定當前時間
+        const now = new Date();
+        document.getElementById('date-display').innerText = now.toLocaleString();
+    </script>
+
+</body>
+</html>

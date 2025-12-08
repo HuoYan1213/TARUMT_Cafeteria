@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DuitNow</title>
+    <link rel="shortcut icon" href="../../Icon/duitnowicon.png">
+    <style>
+        :root {
+            /* E-Wallet */
+            --touch-and-go: #005EB8;
+            --alipay: #1E6FFF;
+            --boost: #EC1C24;
+            --shopee: #EE4D2D;
+            --grab: #00B14F;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #EB0029;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100%;
+            text-align: center;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            background: #E8386C;
+            padding: 12px;
+            width: 400px;
+            gap: 10px;
+            box-shadow: 0 0 10px #00000080;
+        }
+
+        .top-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            background: #FFFFFF;
+            border-radius: 10px;
+            flex: 1.5;
+            gap: 25px;
+        }
+
+        .top-section img {
+            width: 70px;
+        }
+
+        .qr-container {
+            display: grid;
+            place-items: center;
+        }
+
+        .qr-container img {
+            grid-area: 1 / 1 / 2 / 2;
+        }
+
+        #provider-icon {
+            width: 50px;
+            background: #FFFFFF;
+            border-radius: 10px;
+        }
+
+        #qr-code {
+            width: 180px;
+        }
+
+        .trader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            margin-bottom: 10px;
+        }
+
+        #trader-name {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        #ref-id {
+            color: #909090;
+            font-size: 10px;
+            margin: 0;
+        }
+
+        #total-amount {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 8px 0;
+            color: #E8386C;
+        }
+
+        .countdown-timer {
+            color: #909090;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        #expire-countdown {
+            color: #E8386C;
+        }
+
+        .center-content {
+            color: #FFFFFF;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 2px;
+            padding: 0;
+        }
+
+        .bottom-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            background: #FFFFFF;
+            border-radius: 10px;
+            flex: 1;
+            font-size: 12px;
+            padding: 20px 0;
+        }
+
+        .bottom-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #909090;
+        }
+
+        #section-title {
+            font-weight: bold;
+            font-size: 14px;
+            color: #000000;
+        }
+
+        .bottom-section img {
+            width: 80px;
+        }
+
+        .powered-by {
+            color: #DDDDDD;
+            font-size: 8px;
+            padding: 0;
+            letter-spacing: 1px;
+            cursor: context-menu;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="top-section">
+            <img src="../../Icon/duitnow.png" alt="DuitNow">
+            <div class="qr-container">
+                <img id="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?color=E8386C&ecc=H&size=300x300&data=https://www.youtube.com/watch?v=dQw4w9WgXcQ" alt="Provider">
+                <img id="provider-icon" src="../../Icon/tng.svg" alt="QR Code">
+            </div>
+            <div class="trader">
+                <span id="trader-name">TARUMT's Cafeteria</span>
+                <span id="ref-id">Ref: 20251208-ORD-000000</span>
+                <span id="total-amount">RM 5.00</span>
+                <div class="countdown-timer">
+                    <span>Expiring in</span>
+                    <span id="expire-countdown">05:00</span>
+                </div>
+            </div>
+        </div>
+        <div class="center-content">MALAYSIA NATIONAL QR</div>
+        <div class="bottom-section">
+            <div class="bottom-header">
+                <span id="section-title">Accepted by participating Banks and e-Wallets</span>
+                <span>Merchant Partner</span>
+            </div>
+            <img id="merchant-partner" src="../../Icon/tng.svg" alt="">
+        </div>
+        <div class="powered-by">Powered By PayNet • System by TARUMT</div>
+    </main>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const provider = urlParams.get('provider');
+            const productIds = urlParams.get('products');
+
+            // 1. Update Provider Info & Theme
+            const providerData = {
+                tng: {
+                    name: "Touch'n Go eWallet",
+                    icon: "../../Icon/tng.svg",
+                    color: "#0047BA"
+                },
+                grabpay: {
+                    name: "GrabPay",
+                    icon: "../../Icon/grabpay.png",
+                    color: "#00B14F"
+                },
+                alipay: {
+                    name: "Alipay",
+                    icon: "../../Icon/alipay.png",
+                    color: "#1677FF"
+                },
+                boost: {
+                    name: "Boost",
+                    icon: "../../Icon/boosticon.png",
+                    color: "#EA0029"
+                },
+                shopeepay: {
+                    name: "ShopeePay",
+                    icon: "../../Icon/shopeepay.png",
+                    color: "linear-gradient(to top right, #FF6533, #F63E2E)"                }
+            };
+
+            if (provider && providerData[provider]) {
+                const data = providerData[provider];
+                const color = data.color.substring(1); // Remove # for URL
+                
+                // Change body background and adjust main element
+                $('body').css('background', data.color);
+                $('.powered-by').css('color', '#FFFFFF');
+                $('#provider-icon').attr('src', data.icon).attr('alt', data.name);
+                $('#merchant-partner').attr('src', data.icon).attr('alt', data.name);
+            }
+
+            // 2. Countdown Timer
+            function startCountdown(duration, display) {
+                let timer = duration, minutes, seconds;
+                const interval = setInterval(function () {
+                    minutes = parseInt(timer / 60, 10);
+                    seconds = parseInt(timer % 60, 10);
+
+                    minutes = minutes < 10 ? "0" + minutes : minutes;
+                    seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                    display.text(minutes + ":" + seconds);
+
+                    if (--timer < 0) {
+                        clearInterval(interval);
+                        display.text("EXPIRED");
+                        $('.qr-container').hide();
+                    }
+                }, 1000);
+            }
+
+            const fiveMinutes = 60 * 5;
+            const display = $('#expire-countdown');
+            startCountdown(fiveMinutes, display);
+
+            // 3. Generate Reference ID
+            function generateRefId() {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const randomNum = Math.floor(100000 + Math.random() * 900000);
+                return `Ref: ${year}${month}${day}-ORD-${randomNum}`;
+            }
+            $('#ref-id').text(generateRefId());
+
+            // 4. Fetch and Display Price
+            if (productIds) {
+                $.ajax({
+                    url: '../../Controller/AuthController.php',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'get_checkout_details',
+                        product_ids: productIds.split(',')
+                    },
+                    success: function(response) {
+                        if (response.status === 'success' && response.items.length > 0) {
+                            let subtotal = 0;
+                            response.items.forEach(item => {
+                                subtotal += parseFloat(item.price) * parseInt(item.quantity);
+                            });
+                            const tax = subtotal * 0.06;
+                            const total = subtotal + tax;
+
+                            $('#total-amount').text('RM ' + total.toFixed(2));
+                        } else {
+                            $('#total-amount').text('RM 0.00');
+                        }
+                    },
+                    error: function() {
+                        $('#total-amount').text('RM 0.00');
+                    }
+                });
+            } else {
+                $('#total-amount').text('RM 0.00');
+            }
+        });
+    </script>
+</body>
+</html>

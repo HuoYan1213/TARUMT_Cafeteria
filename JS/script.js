@@ -97,3 +97,43 @@ $(document).ready(function() {
     $('input[name="ewallet_provider"]').change(function(){
     });
 });
+
+function formatCardExpiry(input) {
+    let value = input.value.replace(/\D/g, '');
+    let month = '';
+    let year = '';
+
+    if (value.length > 0) {
+        month = value.substring(0, 2);
+    }
+    if (value.length > 2) {
+        year = value.substring(2, 4);
+    }
+
+    // Auto-add slash
+    if (value.length > 2) {
+        input.value = month + ' / ' + year;
+    } else {
+        input.value = month;
+    }
+
+    // Validation
+    if (value.length >= 4) {
+        const currentYear = new Date().getFullYear() % 100;
+        const currentMonth = new Date().getMonth() + 1;
+        const inputMonth = parseInt(month, 10);
+        const inputYear = parseInt(year, 10);
+
+        if (
+            inputMonth < 1 || inputMonth > 12 ||
+            inputYear < currentYear ||
+            (inputYear === currentYear && inputMonth < currentMonth)
+        ) {
+            input.classList.add('input-error');
+        } else {
+            input.classList.remove('input-error');
+        }
+    } else {
+        input.classList.remove('input-error');
+    }
+}

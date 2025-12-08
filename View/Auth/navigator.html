@@ -28,7 +28,7 @@
         $(document).ready(function () {
             const urlParams = new URLSearchParams(window.location.search);
             const pageParam = urlParams.get('page');
-            let page_to_load = pageParam ? pageParam + '.html' : "cart.html";
+            let page_to_load = pageParam ? pageParam + '.html' : "home.html";
 
             $('#ajax-result').load(page_to_load);
             $("nav .ajax-button[data-get='" + page_to_load + "']").addClass("enabled");
