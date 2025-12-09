@@ -1,1 +1,240 @@
 <title>Profile</title>
+
+<div class="user-profile-container">
+    <div class="listing">
+        <div class="nail">+</div>
+        <div class="hanging"></div>
+    </div>
+    <div class="user-card">
+        <div class="profile-image-container">
+            <img id="profile-image" src="../../Icon/logo.png" alt="Profile Picture">
+            <input type="file" id="profile-picture-upload" accept="image/*" style="display: none;">
+            <div class="edit-overlay">Click to change</div>
+        </div>
+        <div class="user-details">
+            <div class="user-row">
+                <span class="row-title">Name:</span>
+                <span class="row-value" id="user-name">Loading...</span>
+            </div>
+            <div class="user-row">
+                <span class="row-title">Email:</span>
+                <span class="row-value" id="user-email">Loading...</span>
+            </div>
+            <div class="user-row">
+                <span class="row-title">Phone:</span>
+                <span class="row-value" id="user-phone">Loading...</span>
+            </div>
+            <div class="user-row">
+                <span class="row-title">Address:</span>
+                <span class="row-value" id="user-delivery-address">Loading...</span>
+            </div>
+        </div>
+        <button id="edit-button">
+            <i class="fa-solid fa-edit"></i>
+            <span>Edit Profile</span>
+        </button>
+    </div>
+
+    <div class="action-buttons">
+        <button id="logout-button">Logout</button>
+        <button id="delete-button">Delete Account</button>
+    </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // 1. Load user profile data
+    function loadProfile() {
+        $.ajax({
+            url: '../../Controller/AuthController.php',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'get_profile_details'
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    const profilePicture = response.data.Image_Path;
+                    const imagePath = profilePicture ? `../../Image/User/${profilePicture}` : '../../Image/User/default_profile.png';
+                    $('#profile-image').attr('src', imagePath);
+                    $('#user-name').text(response.data.User_Name);
+                    $('#user-email').text(response.data.Email);
+                    $('#user-phone').text(response.data.Phone_Number);
+                    $('#user-delivery-address').text(response.data.Default_Address || 'Not set');
+                } else {
+                    displayToast(response.message || 'Could not load profile.', 'error');
+                    $('.row-value').text('Error');
+                }
+            },
+            error: function() {
+                displayToast('An error occurred while fetching profile data.', 'error');
+                $('.row-value').text('Error');
+            }
+        });
+    }
+
+    // 2. Handle logout
+    $('#logout-button').on('click', function() {
+        displayConfirmationToast(
+            "Are you sure you want to logout?",
+            function() { // onConfirm
+                $.ajax({
+                    url: '../../Controller/AuthController.php',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: { action: 'logout' },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            displayToast('Logging out...', 'success');
+                            setTimeout(() => {
+                                window.location.href = '../Public/login.html';
+                            }, 1500);
+                        }
+                    }
+                });
+            }
+        );
+    });
+
+    // 3. Handle Edit/Confirm Profile
+    $('#edit-button').on('click', function() {
+        const $button = $(this);
+        const isEditMode = $button.find('span').text() === 'Edit Profile';
+
+        if (isEditMode) {
+            // --- Switch to Edit Mode ---
+            $('.user-row').each(function() {
+                const $rowValue = $(this).find('.row-value');
+                const currentValue = $rowValue.text();
+                const inputId = $rowValue.attr('id');
+                const inputElement = `<input type="text" class="edit-input" id="input-${inputId}" value="${currentValue}">`;
+                $rowValue.hide().after(inputElement);
+            });
+
+            $button.find('i').removeClass('fa-edit').addClass('fa-check');
+            $button.find('span').text('Confirm');
+            $('.profile-image-container').addClass('edit-mode');
+            $('.edit-overlay').show();
+
+        } else {
+            // --- Switch to View Mode (Confirm Changes) ---
+            const newName = $('#input-user-name').val();
+            const newEmail = $('#input-user-email').val();
+            const newPhone = $('#input-user-phone').val();
+            const newDeliveryAddress = $('#input-user-delivery-address').val();
+
+            if (!newName || !newEmail || !newPhone) {
+                displayToast("All fields are required.", "error");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'update_profile');
+            formData.append('name', newName);
+            formData.append('email', newEmail);
+            formData.append('phone', newPhone);
+            formData.append('delivery_address', newDeliveryAddress);
+
+            const fileInput = $('#profile-picture-upload')[0];
+            if (fileInput.files.length > 0) {
+                formData.append('profile_picture', fileInput.files[0]);
+            }
+
+            // AJAX call to update profile
+            $.ajax({
+                url: '../../Controller/AuthController.php',
+                type: 'POST',
+                dataType: 'json',
+                data: formData,
+                processData: false, // Important for FormData
+                contentType: false, // Important for FormData
+                success: function(response) {
+                    if (response.status === 'success') {
+                        displayToast(response.message, 'success');
+
+                        // Switch back to view mode
+                        // First, show the original span containers so they can be populated
+                        $('.row-value').show();
+                        // Then, remove the input fields
+                        $('.edit-input').remove();
+                        $button.find('i').removeClass('fa-check').addClass('fa-edit');
+                        $button.find('span').text('Edit Profile');
+                        $('.profile-image-container').removeClass('edit-mode');
+                        $('.edit-overlay').hide();
+                        
+                        // Reload all profile data, including the new image
+                        loadProfile(); // Reload to get updated image path
+                    } else {
+                        displayToast(response.message || 'Update failed.', 'error');
+                    }
+                },
+                error: function() {
+                    displayToast('An error occurred while updating profile.', 'error');
+                }
+            });
+        }
+    });
+
+    // Trigger file input when clicking the profile image container in edit mode
+    $(document).on('click', '.profile-image-container.edit-mode', function(event) {
+        $('#profile-picture-upload').click();
+        event.stopPropagation(); // 防止事件冒泡
+    });
+
+    // Preview the selected image
+    $('#profile-picture-upload').on('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#profile-image').attr('src', e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // 4. Handle Delete Account
+    $('#delete-button').on('click', function() {
+        displayConfirmationToast(
+            "This action is irreversible. Are you sure you want to delete your account?",
+            function() { // onConfirm
+                // A second, more explicit confirmation
+                displayConfirmationToast(
+                    "All your data will be lost. Please confirm again.",
+                    function() { // onFinalConfirm
+                        $.ajax({
+                            url: '../../Controller/AuthController.php',
+                            type: 'POST',
+                            dataType: 'json',
+                            data: { action: 'delete_account' },
+                            success: function(response) {
+                                if (response.status === 'success') {
+                                    displayToast('Account deleted successfully. Logging out...', 'success');
+                                    setTimeout(() => {
+                                        // Redirect to register page as the account no longer exists
+                                        window.location.href = '../Public/register.html';
+                                    }, 2000);
+                                } else {
+                                    displayToast(response.message || 'Failed to delete account.', 'error');
+                                }
+                            },
+                            error: function() {
+                                displayToast('An error occurred.', 'error');
+                            }
+                        });
+                    },
+                    function() { // onFinalCancel
+                        displayToast("Account deletion cancelled.", "error");
+                    }
+                );
+            },
+            function() { // onCancel
+                displayToast("Account deletion cancelled.", "error");
+            }
+        );
+    });
+
+    loadProfile();
+});
+</script>

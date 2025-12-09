@@ -52,11 +52,26 @@ class AuthController {
         elseif ($action === 'get_order_details') {
             $this->getOrderDetails();
         }
+        elseif ($action === 'get_order_history') {
+            $this->getOrderHistory();
+        }
         elseif ($action === 'get_top_sales') {
             $this->getTopSales();
         }
         elseif ($action === 'check_session') {
             $this->checkSession();
+        }
+        elseif ($action === 'get_profile_details') {
+            $this->getProfileDetails();
+        }
+        elseif ($action === 'logout') {
+            $this->logout();
+        }
+        elseif ($action === 'update_profile') {
+            $this->updateProfile();
+        }
+        elseif ($action === 'delete_account') {
+            $this->deleteAccount();
         }
     }
 
@@ -139,37 +154,59 @@ class AuthController {
     }
 
     private function createStandardOrder() {
+        $product_ids = isset($_POST['product_ids']) && is_array($_POST['product_ids']) ? $_POST['product_ids'] : [];
         $cart_id = $this->getCart($this->user_id);
-        if (!$cart_id) {
-            echo json_encode(['status' => 'error', 'message' => 'Cart not found']);
+
+        if (empty($product_ids) || !$cart_id) {
+            // This can happen if user directly navigates to delivery.html without items
+            if (isset($_POST['delivery_address'])) {
+                echo json_encode(['status' => 'error', 'message' => 'Your cart is empty or invalid.']);
+            }
+            echo json_encode(['status' => 'error', 'message' => 'No products selected or cart not found.']);
             exit;
         }
-        // Recalculate total from cart for security
-        $sql_total = "SELECT SUM(Subtotal) as Total FROM cart_products WHERE Cart_ID = ?";
+
+        // Recalculate total from cart for security, based on selected product_ids
+        $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
+        $sql_total = "SELECT SUM(Subtotal) as Total FROM cart_products WHERE Cart_ID = ? AND Product_ID IN ($placeholders)";
+        
+        $types = 's' . str_repeat('i', count($product_ids));
+        $params = array_merge([$cart_id], $product_ids);
+
         $stmt = $this->conn->prepare($sql_total);
-        $stmt->bind_param("s", $cart_id);
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
-        $subtotal = $row['Total'] ?? 0;
+        $total_amount = $row['Total'] ?? 0;
+
+        // Add extra charges for Take-Away or Delivery
+        $order_type = isset($_POST['order_type']) ? $_POST['order_type'] : 'Dine-In';
+        $delivery_address = isset($_POST['delivery_address']) ? trim($_POST['delivery_address']) : null;
+        $extra_charge = 0;
+        if ($order_type === 'Take-Away') {
+            $extra_charge = 1.00;
+        } elseif ($order_type === 'Delivery') {
+            $extra_charge = 2.90;
+        }
+        $final_total = $total_amount + ($total_amount * 0.06) + $extra_charge;
         
-        if ($subtotal <= 0) {
-            echo json_encode(['status' => 'error', 'message' => 'Cart is empty']);
+        if ($final_total <= 0) {
+            // This can happen if product_ids are invalid
+            echo json_encode(['status' => 'error', 'message' => 'Selected items are invalid or have a total of zero.']);
             exit;
         }
-        $tax = $subtotal * 0.06;
-        $final_total = $subtotal + $tax;
 
         $order_id = IDHelper::generate($this->conn, 'orders', 'Order_ID', 'ORD');
         $current_time = date('Y-m-d H:i:s');
-        $status = 'Completed';
+        $status = 'Completed'; // Assume direct completion for non-pending flows
 
-        $sql_order = "INSERT INTO orders (Order_ID, User_ID, Created_At, Total_Amount, Status) VALUES (?, ?, ?, ?, ?)";
+        $sql_order = "INSERT INTO orders (Order_ID, User_ID, Created_At, Total_Amount, Status, Order_Type, Delivery_Address) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->conn->prepare($sql_order);
-        $stmt->bind_param("sisds", $order_id, $this->user_id, $current_time, $final_total, $status);
+        $stmt->bind_param("sisdsss", $order_id, $this->user_id, $current_time, $final_total, $status, $order_type, $delivery_address);
 
         if ($stmt->execute()) {
-            $this->processCartForOrder($order_id, $this->user_id);
+            $this->processCartForOrder($order_id, $this->user_id, $product_ids);
             echo json_encode(['status' => 'success', 'message' => 'Order placed successfully', 'order_id' => $order_id]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to create order']);
@@ -177,14 +214,24 @@ class AuthController {
         exit;
     }
 
-    private function processCartForOrder($order_id, $user_id) {
+    private function processCartForOrder($order_id, $user_id, $product_ids = []) {
         $cart_id = $this->getCart($user_id);
         if (!$cart_id) return;
 
+        $where_clause = '';
+        $bind_params = [$cart_id];
+        $bind_types = 's';
+
+        if (!empty($product_ids)) {
+            $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
+            $where_clause = " AND Product_ID IN ($placeholders)";
+            $bind_params = array_merge($bind_params, $product_ids);
+            $bind_types .= str_repeat('i', count($product_ids));
+        }
         // Move items from cart to order_products
-        $sql_cart_products = "SELECT Product_ID, Quantity, Subtotal FROM cart_products WHERE Cart_ID = ?";
+        $sql_cart_products = "SELECT Product_ID, Quantity, Subtotal FROM cart_products WHERE Cart_ID = ?" . $where_clause;
         $stmt_cart_products = $this->conn->prepare($sql_cart_products);
-        $stmt_cart_products->bind_param("s", $cart_id);
+        $stmt_cart_products->bind_param($bind_types, ...$bind_params);
         $stmt_cart_products->execute();
         $cart_products_result = $stmt_cart_products->get_result();
 
@@ -207,10 +254,10 @@ class AuthController {
             $stmt_insert_order_product->execute();
         }
 
-        // Clear the cart
-        $sql_clear = "DELETE FROM cart_products WHERE Cart_ID = ?";
+        // Clear only the processed items from the cart
+        $sql_clear = "DELETE FROM cart_products WHERE Cart_ID = ?" . $where_clause;
         $stmt_clear = $this->conn->prepare($sql_clear);
-        $stmt_clear->bind_param("s", $cart_id);
+        $stmt_clear->bind_param($bind_types, ...$bind_params);
         $stmt_clear->execute();
     }
 
@@ -344,6 +391,191 @@ class AuthController {
         }
         exit;
     }
+
+    private function getProfileDetails() {
+        header('Content-Type: application/json');
+        if ($this->user_id === 0) {
+            echo json_encode(['status' => 'error', 'message' => 'User not logged in.']);
+            exit;
+        }
+    
+        $sql = "SELECT User_Name, Email, Phone_Number, Image_Path, Default_Address FROM users WHERE User_ID = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $this->user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+    
+        if ($user = $result->fetch_assoc()) {
+            // Provide a default if Image_Path is empty or null
+            $user['Image_Path'] = $user['Image_Path'] ?? 'default_profile.png';
+            $user['Default_Address'] = $user['Default_Address'] ?? ''; // Provide empty string if null
+            echo json_encode(['status' => 'success', 'data' => $user]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'User not found.']);
+        }
+        exit;
+    }
+
+    private function logout() {
+        session_unset();
+        session_destroy();
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'message' => 'Logged out successfully.']);
+        exit;
+    }
+
+    private function updateProfile() {
+        header('Content-Type: application/json');
+        if ($this->user_id === 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Authentication required.']);
+            exit;
+        }
+    
+        $name = isset($_POST['name']) ? trim($_POST['name']) : '';
+        $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+        $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
+        $delivery_address = isset($_POST['delivery_address']) ? trim($_POST['delivery_address']) : null;
+    
+        if (empty($name) || empty($email) || empty($phone)) {
+            echo json_encode(['status' => 'error', 'message' => 'All fields are required.']);
+            exit;
+        }
+    
+        $profile_picture_filename = null;
+        // Handle profile picture upload
+        if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+            $file_tmp_name = $_FILES['profile_picture']['tmp_name'];
+            $file_name = $_FILES['profile_picture']['name'];
+            $file_size = $_FILES['profile_picture']['size'];
+            $file_type = $_FILES['profile_picture']['type'];
+
+            $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+            $max_file_size = 5 * 1024 * 1024; // 5 MB
+
+            if (!in_array($file_type, $allowed_types)) {
+                echo json_encode(['status' => 'error', 'message' => 'Invalid file type. Only JPG, PNG, GIF are allowed.']);
+                exit;
+            }
+            if ($file_size > $max_file_size) {
+                echo json_encode(['status' => 'error', 'message' => 'File size exceeds 5MB limit.']);
+                exit;
+            }
+
+            $upload_dir = __DIR__ . '/../Image/User/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true); // Create directory if it doesn't exist
+            }
+
+            $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
+            $unique_file_name = 'user_' . $this->user_id . '_' . time() . '.' . $file_ext;
+            $destination_path = $upload_dir . $unique_file_name;
+
+            if (move_uploaded_file($file_tmp_name, $destination_path)) {
+                $profile_picture_filename = $unique_file_name;
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Failed to upload profile picture.']);
+                exit;
+            }
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid email format.']);
+            exit;
+        }
+    
+        $sql_parts = ["User_Name = ?", "Email = ?", "Phone_Number = ?"];
+        $params = [$name, $email, $phone];
+        $types = "sss";
+
+        if ($profile_picture_filename !== null) {
+            $sql_parts[] = "Image_Path = ?";
+            $params[] = $profile_picture_filename;
+            $types .= "s";
+        }
+        
+        // Add delivery address to update
+        if ($delivery_address !== null) { // Allow setting to empty string
+            $sql_parts[] = "Default_Address = ?";
+            $params[] = $delivery_address;
+            $types .= "s";
+        }
+
+        $params[] = $this->user_id;
+        $types .= "i";
+
+        $sql = "UPDATE users SET " . implode(', ', $sql_parts) . " WHERE User_ID = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+    
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => 'Profile updated successfully.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to update profile. Please try again.']);
+        }
+        exit;
+    }
+
+    private function deleteAccount() {
+        header('Content-Type: application/json');
+        if ($this->user_id === 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Authentication required.']);
+            exit;
+        }
+        $sql = "DELETE FROM users WHERE User_ID = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $this->user_id);
+        $stmt->execute();
+        $this->logout(); // Reuse logout to clear session and send success response
+    }
+
+    private function getOrderHistory() {
+        if ($this->user_id === 0) { // Should be protected by checkSession on the frontend
+            echo '<p>Please log in to see your order history.</p>';
+            exit;
+        }
+    
+        // Get User Name
+        $user_details = $this->getUserDetails();
+        $user_name = $user_details ? htmlspecialchars($user_details['User_Name']) : 'Customer';
+
+        // Get Orders
+        $sql_orders = "SELECT Order_ID, Created_At, Total_Amount, Status, Order_Type FROM orders WHERE User_ID = ? ORDER BY Created_At DESC";
+        $stmt_orders = $this->conn->prepare($sql_orders);
+        $stmt_orders->bind_param("i", $this->user_id);
+        $stmt_orders->execute();
+        $result_orders = $stmt_orders->get_result();
+        
+        $items_html = '';
+        if ($result_orders->num_rows > 0) {
+            while ($row = $result_orders->fetch_assoc()) {
+                $order_id = htmlspecialchars($row['Order_ID']);
+                $created_at = new DateTime($row['Created_At']);
+                $date = $created_at->format('M d, Y');
+                $total_amount = number_format($row['Total_Amount'], 2);
+                $order_type = htmlspecialchars($row['Order_Type']);
+                $status = htmlspecialchars($row['Status']);
+                $status_class = strtolower(str_replace(' ', '-', $status)); // e.g., 'completed', 'pending'
+    
+                $items_html .= '
+                <div class="history-item" data-order-id="' . $order_id . '">
+                    <div class="left-history">
+                        <span style="font-size: 12px;">' . $date . ' (' . $order_type . ')</span>
+                        <span style="font-size: 18px;font-weight: 600;">' . $order_id . '</span>
+                    </div>
+                    <div class="right-history">
+                        <span style="color: var(--text-price);font-size: 18px;font-weight: 600;">RM ' . $total_amount . '</span>
+                        <span class="status ' . $status_class . '">' . $status . '</span>
+                    </div>
+                </div>';
+            }
+        } else {
+            $items_html = '<p style="text-align:center; color:#888;">You haven\'t placed any orders yet.</p>';
+        }
+
+        echo json_encode(['status' => 'success', 'userName' => $user_name, 'itemsHtml' => $items_html]); // This should be JSON
+        exit;
+    }
+
 
     private function getUserDetails() {
         if ($this->user_id === 0) {
@@ -517,8 +749,10 @@ class AuthController {
 
                 $items_html .= '
                 <div class="cart-items" data-id="'.$product_id.'" data-price="'.$price.'" data-quantity="'.$quantity.'">
-                    <input type="checkbox" class="cart-item-checkbox" value="'.$product_id.'">
-                    <img src="../../Image/Product/'.$image.'">
+                    <label id="cart-checkbox" for="cart-item-checkbox">
+                        <input type="checkbox" id="cart-item-checkbox" class="cart-item-checkbox" value="'.$product_id.'">
+                        <img src="../../Image/Product/'.$image.'">
+                    </label>
                     <div class="item-details">
                         <span id="item-name">'.$name.'</span>
                         <span id="item-price">RM '.number_format($price, 2).'</span>
@@ -547,7 +781,7 @@ class AuthController {
         }
 
         $tax = $subtotal * 0.06;
-        $total = $subtotal + $tax;
+        $total = $subtotal; // Summary on cart page should not include tax yet, it's calculated on checkout
 
         $summary_html = '
         <h1>RECEIPT</h1>
@@ -557,11 +791,11 @@ class AuthController {
             <span>Subtotal</span>
             <span>RM '.number_format($subtotal, 2).'</span>
         </div>
-        <div class="cost-tax">
+        <div class="cost-tax" style="display:none;">
             <span>Tax (6%)</span>
             <span>RM '.number_format($tax, 2).'</span>
         </div>
-        <div class="dashed-line"></div>
+        <div class="dashed-line" style="display:none;"></div>
         <div class="total-amount">
             <span>TOTAL</span>
             <span>RM '.number_format($total, 2).'</span>

@@ -62,7 +62,15 @@
             gap: 30px;
         }
 
-        .order-summary-container {
+        .order-right-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 80%;
+            flex: 1;
+        }
+
+        .order-summary-container, .order-type-container {
             background: #FDFDFD;
             display: flex;
             justify-content: center;
@@ -70,9 +78,8 @@
             align-items: flex-start;
             height: fit-content;
             max-height: fit-content;
-            width: 80%;
+            width: 100%;
             padding: 20px 25px;
-            flex: 1;
             border-radius: 10px;
             box-shadow: 0 0 10px #00000020;
             gap: 8px;
@@ -80,7 +87,46 @@
             margin-bottom: 25px;
         }
 
-        .order-summary-container h2, .payment-method-container h2 {
+        .order-type-container .order-type-option {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            text-wrap: nowrap;
+        }
+
+        .order-type-container input {
+            display: none;
+        }
+
+        .order-type-container label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 5px;
+            box-sizing: border-box;
+            color: var(--text-secondary);
+            font-family: var(--lora);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .type-description {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            text-wrap: wrap;
+            font-size: 14px;
+        }
+
+        .order-type-container label.active .radio-circle {
+            border-color: #A64B2A;
+            background: #A64B2A;
+            box-shadow: inset 0 0 0 3px #FFFFFF;
+        }
+
+        .order-type-container h2, .order-summary-container h2, .payment-method-container h2 {
             color: var(--text-primary);
             font-family: var(--playfair-display);
             font-size: 20px;
@@ -398,11 +444,11 @@
 </head>
 <body class="checkout">
     <header>
-        <button onclick="window.location.href='navigator.html'">‹ Back</button>
+        <button onclick="history.back()">‹ Back</button>
     </header>
     <main>
         <div class="payment-method-container">
-            <h2>Paymentment Method</h2>
+            <h2>Payment Method</h2>
             <div class="payment-list">
                 <div class="payment-method-wrapper">
                     <label class="payment-card">
@@ -526,13 +572,59 @@
             </div>
         </div>
 
-        <div class="order-summary-container">
-            <h2>Order Summary</h2>
-            <p>Loading your order...</p>
+        <div class="order-right-container">
+            <div class="order-type-container">
+                <h2>Order Type</h2>
+                <div class="order-type-option">
+                    <label for="dine-in">
+                        <div class="type-description">
+                            <span>Dine-In</span>
+                            <span style="color: #999999; font-weight: normal;font-size: 12px;">Enjoy your meal in our cozy dining area with freshly served dishes.</span>
+                        </div>
+                        <input id="dine-in" class="modern-input" type="radio" name="order-type" value="Dine-In" checked>
+                        <div class="radio-circle"></div>
+                    </label>
+                    <label for="take-away">
+                        <div class="type-description">
+                            <span>Take-Away</span>
+                            <span style="color: #999999; font-weight: normal;font-size: 12px;">Order and pick up your meal to enjoy anywhere at your convenience.<br>(Package charge: RM 1.00)</span>
+                        </div>
+                        <input id="take-away" class="modern-input" type="radio" name="order-type" value="Take-Away">
+                        <div class="radio-circle"></div>
+                    </label>
+                    <label for="delivery">
+                        <div class="type-description">
+                            <span>Delivery</span>
+                            <span style="color: #999999;font-weight: normal;font-size: 12px;">Delivered to your doorstep within a 1 km radius.<br>(Delivery fee: RM 2.90)</span>
+                        </div>
+                        <input id="delivery" class="modern-input" type="radio" name="order-type" value="Delivery">
+                        <div class="radio-circle"></div>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="order-summary-container">
+                <h2>Order Summary</h2>
+                <p>Loading your order...</p>
+            </div>
         </div>
     </main>
 
     <script>
+        // Global state for order calculation
+        let orderState = {
+            subtotal: 0,
+            tax: 0,
+            extraCharge: 0,
+            total: 0,
+            orderType: 'Dine-In' // Default
+        };
+
+        $(document).ready(function() {
+            // Set default checked radio button to be active
+            $('input[name="order-type"]:checked').closest('label').addClass('active');
+        });
+
         $('#card-number').on('input', function() {
             let raw_value = $(this).val().replace(/\D/g, '');
             let $icon = $('#card-brand-icon');
@@ -600,12 +692,14 @@
                 summaryContainer.empty(); 
 
                 let itemsHtml = '';
-                let subtotal = 0;
+                orderState.subtotal = 0;
 
                 if (items && items.length > 0) {
                     items.forEach(item => {
                         const itemTotal = parseFloat(item.price) * parseInt(item.quantity);
-                        subtotal += itemTotal;
+                        // Use orderState to store subtotal
+                        orderState.subtotal += itemTotal;
+
                         itemsHtml += `
                             <div class="order-items">
                                 <div>
@@ -620,36 +714,79 @@
                     itemsHtml = '<p class="no-items-found">No items selected for checkout.</p>';
                 }
 
-                const tax = subtotal * 0.06;
-                const total = subtotal + tax;
-
                 summaryContainer.append(`
                     <h2>Order Summary</h2>
                     ${itemsHtml}
                     <div class="split-line"></div>
                     <div class="order-subtotal">
                         <span>Subtotal</span>
-                        <span id="order-subtotal">RM ${subtotal.toFixed(2)}</span>
+                        <span id="order-subtotal">RM 0.00</span>
                     </div>
                     <div class="order-tax">
                         <span>SST (6%)</span>
-                        <span id="order-tax">RM ${tax.toFixed(2)}</span>
+                        <span id="order-tax">RM 0.00</span>
+                    </div>
+                    <div class="order-extra-charge" style="display: none; justify-content: space-between; align-items: center; width: 100%; font-size: 14px; font-family: var(--lora); font-weight: 600;">
+                        <span id="extra-charge-label"></span>
+                        <span id="extra-charge-amount"></span>
                     </div>
                     <div class="split-line"></div>
                     <div class="order-total">
                         <span>Total</span>
-                        <span id="order-total">RM ${total.toFixed(2)}</span>
+                        <span id="order-total">RM 0.00</span>
                     </div>
                     <button id="order-button" ${!items || items.length === 0 ? 'disabled' : ''}>Place Order</button>
                 `);
+
+                // Initial calculation
+                calculateTotal();
             }
 
-            $('.payment-card').on('click', function() {
-                $(this).find('input[name="method-type"]').prop('checked', true).trigger('change');
+            function calculateTotal() {
+                const orderType = $('input[name="order-type"]:checked').val();
+                orderState.orderType = orderType;
+                orderState.extraCharge = 0;
+
+                const extraChargeContainer = $('.order-extra-charge');
+                const extraChargeLabel = $('#extra-charge-label');
+                const extraChargeAmount = $('#extra-charge-amount');
+
+                if (orderType === 'Take-Away') {
+                    orderState.extraCharge = 1.00;
+                    extraChargeLabel.text('Packaging Charge');
+                    extraChargeAmount.text(`RM ${orderState.extraCharge.toFixed(2)}`);
+                    extraChargeContainer.show();
+                } else if (orderType === 'Delivery') {
+                    orderState.extraCharge = 2.90;
+                    extraChargeLabel.text('Delivery Fee');
+                    extraChargeAmount.text(`RM ${orderState.extraCharge.toFixed(2)}`);
+                    extraChargeContainer.show();
+                } else {
+                    extraChargeContainer.hide();
+                }
+
+                orderState.tax = orderState.subtotal * 0.06;
+                orderState.total = orderState.subtotal + orderState.tax + orderState.extraCharge;
+
+                $('#order-subtotal').text(`RM ${orderState.subtotal.toFixed(2)}`);
+                $('#order-tax').text(`RM ${orderState.tax.toFixed(2)}`);
+                $('#order-total').text(`RM ${orderState.total.toFixed(2)}`);
+            }
+
+            // Handle Order Type change
+            $('input[name="order-type"]').on('change', function() {
+                $('label[for="' + $(this).attr('id') + '"]').addClass('active').siblings().removeClass('active');
+                calculateTotal();
+                handlePaymentMethodAvailability();
             });
+
+            $('.payment-card').on('click', function() {
+                $(this).find('input[name="method-type"]').prop('checked', true);
+            })
 
             $('.order-summary-container').on('click', '#order-button', function() {
                 const paymentMethod = $('input[name="method-type"]:checked').val();
+                const orderType = orderState.orderType;
 
                 if (!paymentMethod) {
                     displayToast("Please select a payment method.", "error");
@@ -657,6 +794,16 @@
                 }
 
                 if (paymentMethod === 'e-wallet') {
+                    // If order type is delivery, redirect to delivery address page first
+                    if (orderType === 'Delivery') {
+                        const productIds = new URLSearchParams(window.location.search).get('products');
+                        const checkoutParams = new URLSearchParams({
+                            products: productIds,
+                            orderType: orderType,
+                        });
+                        window.location.href = `delivery.html?${checkoutParams.toString()}`;
+                        return;
+                    }
                     const ewalletProvider = $('input[name="ewallet_provider"]:checked').val();
                     if (!ewalletProvider) {
                         displayToast("Please select an e-wallet provider.", "error");
@@ -700,6 +847,16 @@
 
                     return;
                 } else if (paymentMethod === 'card') {
+                    // If order type is delivery, redirect to delivery address page first
+                    if (orderType === 'Delivery') {
+                        const productIds = new URLSearchParams(window.location.search).get('products');
+                        const checkoutParams = new URLSearchParams({
+                            products: productIds,
+                            orderType: orderType,
+                        });
+                        window.location.href = `delivery.html?${checkoutParams.toString()}`;
+                        return;
+                    }
                     const cardNumber = $('#card-number').val().replace(/\s/g, '');
                     const cardExpiry = $('#card-expiry').val();
                     const cardCvc = $('#card-cvc').val();
@@ -709,6 +866,16 @@
                         return;
                     }
                 } else if (paymentMethod === 'fpx') {
+                    // If order type is delivery, redirect to delivery address page first
+                    if (orderType === 'Delivery') {
+                        const productIds = new URLSearchParams(window.location.search).get('products');
+                        const checkoutParams = new URLSearchParams({
+                            products: productIds,
+                            orderType: orderType,
+                        });
+                        window.location.href = `delivery.html?${checkoutParams.toString()}`;
+                        return;
+                    }
                     const bankProvider = $('input[name="bank_provider"]:checked').val();
                     if (!bankProvider) {
                         displayToast("Please select a bank for FPX payment.", "error");
@@ -742,6 +909,16 @@
                     return; // Stop further execution
                 }
 
+                // Handle "Pay at Counter" for Delivery (Cash on Delivery)
+                if (orderType === 'Delivery' && paymentMethod === 'counter') {
+                    const productIds = new URLSearchParams(window.location.search).get('products');
+                    const checkoutParams = new URLSearchParams({
+                        products: productIds,
+                        orderType: orderType,
+                    });
+                    window.location.href = `delivery.html?${checkoutParams.toString()}`;
+                    return;
+                }
                 const totalText = $('#order-total').text();
                 const totalAmount = parseFloat(totalText.replace('RM', '').trim());
 
@@ -755,7 +932,9 @@
                         dataType: 'json',
                         data: {
                             action: 'place_order',
-                            product_ids: productIds ? productIds.split(',') : []
+                            product_ids: productIds ? productIds.split(',') : [],
+                            order_type: orderState.orderType,
+                            extra_charge: orderState.extraCharge
                         },
                         success: function(response) {
                             if (response.status === 'success') {
@@ -772,10 +951,25 @@
                             displayToast('An error occurred while trying to place the order.', 'error');
                         }
                     });
-                } else if (paymentMethod !== 'counter') {
+                } else if (totalAmount <= 0 && paymentMethod !== 'counter') {
                     displayToast("Cannot proceed with a total of zero.", "error");
                 }
             });
+
+            function handlePaymentMethodAvailability() {
+                const orderType = $('input[name="order-type"]:checked').val();
+                const payAtCounterCard = $('input[value="counter"]').closest('.payment-card');
+                const payAtCounterLabel = payAtCounterCard.find('.payment-name');
+                const payAtCounterDesc = payAtCounterCard.find('.payment-description');
+
+                if (orderType === 'Delivery') {
+                    payAtCounterLabel.text('Cash on Delivery');
+                    payAtCounterDesc.text('Pay with cash when your order arrives');
+                } else {
+                    payAtCounterLabel.text('Pay at Counter');
+                    payAtCounterDesc.text('Cash or QR payment upon collection');
+                }
+            }
         });
     </script>
 </body>

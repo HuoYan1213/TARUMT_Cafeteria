@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../../CSS/auth.css">
+    <link rel="shortcut icon" href="../../Icon/logo.png">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../../JS/script.js"></script>
+    <title>Delivery Address</title>
+    <style>
+        body.delivery {
+            background-image: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 20px;
+        }
+
+        .delivery-container {
+            width: 100%;
+            max-width: 500px;
+            background: #FDFDFD;
+            padding: 30px 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px #00000020;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .delivery-container h2 {
+            color: var(--text-primary);
+            font-family: var(--playfair-display);
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-family: var(--lora);
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #CCC;
+            border-radius: 6px;
+            font-family: var(--lora);
+            box-sizing: border-box;
+            outline: none;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .input-group textarea:focus {
+            border-color: #A64B2A;
+        }
+
+        #confirm-delivery-button {
+            font-family: var(--lora);
+            font-size: 16px;
+            font-weight: bold;
+            background: var(--button-primary-background);
+            color: var(--button-primary-text);
+            padding: 12px;
+            width: 100%;
+            letter-spacing: 2px;
+            border: none;
+            border-radius: 8px;
+            box-shadow: var(--shadow-float);
+            transition: all 0.5s ease;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        #confirm-delivery-button:hover {
+            background: var(--button-hover-background);
+        }
+    </style>
+</head>
+<body class="delivery">
+    <div class="delivery-container">
+        <h2>Delivery Address</h2>
+        <div class="input-group">
+            <label for="delivery-address">Please enter your full address:</label>
+            <textarea id="delivery-address" placeholder="e.g., Block A, Level 3, Room 123, TARUMT KL Campus, Jalan Genting Kelang, Setapak, 53300 Kuala Lumpur"></textarea>
+        </div>
+        <button id="confirm-delivery-button">Confirm Address & Place Order</button>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#confirm-delivery-button').on('click', function() {
+                const address = $('#delivery-address').val().trim();
+                if (!address) {
+                    displayToast("Please enter a delivery address.", "error");
+                    return;
+                }
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const productIds = urlParams.get('products');
+                const orderType = urlParams.get('orderType');
+
+                $.ajax({
+                    url: '../../Controller/AuthController.php',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'place_order',
+                        product_ids: productIds ? productIds.split(',') : [],
+                        order_type: orderType,
+                        delivery_address: address,
+                        payment_method: 'Delivery' // Indicate this is a delivery order
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            displayToast(response.message, 'success');
+                            if (response.order_id) {
+                                // Redirect to receipt page after successful order placement
+                                window.location.href = `receipt.html?orderId=${response.order_id}`;
+                            }
+                        } else {
+                            displayToast(response.message || 'Failed to place order.', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('AJAX error placing delivery order:', xhr.responseText);
+                        displayToast('An error occurred while placing the order.', 'error');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

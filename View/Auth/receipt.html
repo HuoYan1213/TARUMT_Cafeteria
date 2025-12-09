@@ -109,17 +109,28 @@
                 $('.receipt-container').html('<h1>Error</h1><p>No Order ID provided.</p>');
             }
 
-            // Handle button visibility based on referrer
+            // --- Back Button Logic ---
+            const fromPage = urlParams.get('from');
             const referrer = document.referrer;
-            if (referrer.includes('confirmation.html')) {
-                $('#back-button').hide();
-            } else {
-                $('#back-button').show();
+            const backButton = $('#back-button');
+
+            if (fromPage === 'history') {
+                // Case 1: Coming from the order history page
+                backButton.text('Back to History');
+            } else if (referrer.includes('confirmation.html')) {
+                // Case 2: Coming from a payment flow, hide the button
+                backButton.hide();
             }
 
-            // Button click event
-            $('#back-button').on('click', function() {
-                window.location.href = 'navigator.html?page=home';
+            // Add the click handler for the button
+            backButton.on('click', function() {
+                if (backButton.text() === 'Back to History') {
+                    // If text is 'Back to History', go to history page
+                    window.location.href = 'navigator.html?page=history';
+                } else {
+                    // Otherwise, go to home page
+                    window.location.href = 'navigator.html?page=home';
+                }
             });
         });
     </script>

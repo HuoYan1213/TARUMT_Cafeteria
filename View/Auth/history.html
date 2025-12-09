@@ -1,1 +1,95 @@
 <title>History</title>
+<style>
+    .split-line {
+        border-top: 1px solid #BBBBBB;
+        margin: 20px 0;
+        margin-bottom: 10px;
+        height: 0px;
+        width: 100%;
+    }
+    .status {
+        font-size: 10px;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #fff;
+        width: 80px;
+        text-align: center;
+        padding: 5px;
+    }
+    .status.completed {
+        background-color: #28a745; /* Green */
+    }
+    .status.pending {
+        background-color: #ffc107; /* Yellow */
+    }
+</style>
+
+<div class="history-container">
+    <div class="roll">
+        <div class="roll-locker"></div>
+        <div class="top-roll"></div>
+    </div>
+
+    <div class="history-content">
+        <div class="history-title">
+            <h1>Order History</h1>
+            <span>User: Name</span>
+        </div>
+        <div class="split-line"></div>
+        <div class="history-item-container">
+            <div class="history-item">
+                <div class="left-history">
+                    <span style="font-size: 12px;">MMM dd, yyyy</span>
+                    <span style="font-size: 18px;font-weight: 600;">Payment Method</span>
+                </div>
+                <div class="right-history">
+                    <span style="color: var(--text-price);font-size: 18px;font-weight: 600;">RM xx.xx</span>
+                    <span style="font-size: 12px;">Status</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="roll">
+        <div class="roll-locker"></div>
+        <div class="bottom-roll"></div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    const container = $('.history-item-container');
+    container.html('<p style="text-align:center; color:#888;">Loading history...</p>');
+
+    // 1. Fetch order history from the backend
+    $.ajax({
+        url: '../../Controller/AuthController.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { action: 'get_order_history' },
+        success: function(response) {
+            if (response.status === 'success') {
+                // Update user name
+                $('#history-user').text('User: ' + response.userName);
+                // Populate order items
+                container.html(response.itemsHtml);
+            } else {
+                container.html('<p style="text-align:center; color:red;">Failed to load history.</p>');
+            }
+        },
+        error: function() {
+            container.html('<p style="text-align:center; color:red;">An error occurred while loading history.</p>');
+        }
+    });
+
+    // 2. Add click event listener for history items
+    // We use event delegation since the items are loaded dynamically
+    $(document).on('click', '.history-item', function() {
+        const orderId = $(this).data('order-id');
+        if (orderId) {
+            window.location.href = `receipt.html?orderId=${orderId}&from=history`;
+        }
+    });
+});
+</script>
