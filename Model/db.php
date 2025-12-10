@@ -1,8 +1,8 @@
 <?php
-$HOST = "127.0.0.1";
-$USER = "root";
-$PASSWORD = "TKS12345678";
-$DBNAME = "tarumtcafeteria";
+$HOST = "database-1.csythvbw89fp.us-east-1.rds.amazonaws.com";
+$USER = "admin";
+$PASSWORD = "tarumt2023";
+$DBNAME = "tarumtDB";
 
 $conn = new mysqli($HOST, $USER, $PASSWORD, $DBNAME);
 
