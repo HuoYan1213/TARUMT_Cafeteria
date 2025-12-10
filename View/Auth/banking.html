@@ -28,8 +28,17 @@
             gap: 20px;
         }
 
+        .provider-icon {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 26px;
+            font-weight: 700;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
         header img {
-            width: 160px;
+            width: 45px;
         }
 
         #fpx-icon {
@@ -117,7 +126,10 @@
 </head>
 <body>
     <header>
-        <img id="online-banking" src="../../Icon/publicbankwithname.jpg" alt="Public Bank">
+        <div class="provider-icon">
+            <img id="online-banking" src="../../Icon/publicbank.jpg" alt="Public Bank">
+            <span id="provider-name">Online Banking</span>
+        </div>
         <img id="fpx-icon" src="../../Icon/fpx.png" alt="">
     </header>
     
@@ -148,16 +160,19 @@
             const bank = urlParams.get('bank');
 
             const bankData = {
-                'Maybank2u': { name: "Maybank2u", logo: "../../Icon/maybankwithname.png", color: "#FFB81C" },
-                'PBe': { name: "PBe", logo: "../../Icon/publicbankwithname.jpg", color: "#EC1C24" },
-                'RHB Online Banking': { name: "RHB Now", logo: "../../Icon/rhbwithname.png", color: "#007BC2" },
-                'Hong Leong Connect': { name: "HLB Connect", logo: "../../Icon/hlbwithname.png", color: "#ED1B2E" }
+                'Maybank2u': { name: "Maybank2u", logo: "../../Icon/maybank2u.png", color: "#FFB81C" },
+                'PBe': { name: "PBe", logo: "../../Icon/publicbank.png", color: "#EC1C24" },
+                'RHB Online Banking': { name: "RHB Now", logo: "../../Icon/rhb.png", color: "#007BC2" },
+                'Hong Leong Connect': { name: "HLB Connect", logo: "../../Icon/hongleong.png", color: "#ED1B2E" },
+                'CIMB Clicks': { name: "CIMB Clicks", logo: "../../Icon/cimb.png", color: "#BA0A24" } 
             };
 
             // Update page based on bank
             if (bank && bankData[bank]) {
                 const data = bankData[bank];
                 $('#online-banking').attr('src', data.logo).attr('alt', data.name);
+                $('#provider-name').text(data.name);
+                $('#provider-name').css('color', data.color);
                 $('.login-section h1').text(`Login to ${data.name}`);
                 $('#confirm-button').css('background-color', data.color);
             } else {

@@ -135,7 +135,7 @@
             margin-bottom: 10px;
         }
 
-        .order-items, .order-subtotal, .order-tax, .order-total {
+        .order-items, .order-subtotal, .order-tax, .order-total, .order-extra-charge {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -162,7 +162,7 @@
             margin-right: 10px;
         }
 
-        #order-price, #order-subtotal, #order-tax, #order-total {
+        #order-price, #order-subtotal, #order-tax, #order-total, #extra-charge-amount {
             color: var(--text-price);
         }
 
@@ -535,6 +535,12 @@
                                 <img src="../../Icon/maybank.png" alt="Maybank">
                                 <span>Maybank</span>
                             </label>
+
+                            <label class="bank-option">
+                                <input type="radio" name="bank_provider" value="CIMB Clicks">
+                                <img src="../../Icon/cimb.png" alt="CIMB">
+                                <span>CIMB<br>(CIMB Clicks)</span>
+                            </label>
                             
                             <label class="bank-option">
                                 <input type="radio" name="bank_provider" value="PBe">
@@ -544,13 +550,13 @@
 
                             <label class="bank-option">
                                 <input type="radio" name="bank_provider" value="RHB Online Banking">
-                                <img src="../../Icon/rhb.jpeg" alt="RHB">
+                                <img src="../../Icon/rhb.png" alt="RHB">
                                 <span>RHB<br>(RHB Now)</span>
                             </label>
 
                             <label class="bank-option">
                                 <input type="radio" name="bank_provider" value="Hong Leong Connect">
-                                <img src="../../Icon/hongleong.jpeg" alt="Hong Leong">
+                                <img src="../../Icon/hongleong.png" alt="Hong Leong">
                                 <span>Hong Leong<br>(HLB Connect)</span>
                             </label>
 
@@ -780,10 +786,6 @@
                 handlePaymentMethodAvailability();
             });
 
-            $('.payment-card').on('click', function() {
-                $(this).find('input[name="method-type"]').prop('checked', true);
-            })
-
             $('.order-summary-container').on('click', '#order-button', function() {
                 const paymentMethod = $('input[name="method-type"]:checked').val();
                 const orderType = orderState.orderType;
@@ -800,6 +802,7 @@
                         const checkoutParams = new URLSearchParams({
                             products: productIds,
                             orderType: orderType,
+                            paymentMethod: 'e-wallet'
                         });
                         window.location.href = `delivery.html?${checkoutParams.toString()}`;
                         return;
@@ -821,7 +824,10 @@
                         data: {
                             action: 'place_order',
                             payment_method: 'e-wallet-initiate',
-                            total_amount: totalAmount
+                            provider: ewalletProvider,
+                            // Pass required info for backend calculation
+                            product_ids: productIds ? productIds.split(',') : [],
+                            order_type: orderState.orderType
                         },
                         success: function(response) {
                             if (response.status === 'success' && response.order_id) {
@@ -853,6 +859,7 @@
                         const checkoutParams = new URLSearchParams({
                             products: productIds,
                             orderType: orderType,
+                            paymentMethod: 'card'
                         });
                         window.location.href = `delivery.html?${checkoutParams.toString()}`;
                         return;
@@ -869,9 +876,16 @@
                     // If order type is delivery, redirect to delivery address page first
                     if (orderType === 'Delivery') {
                         const productIds = new URLSearchParams(window.location.search).get('products');
+                        const bankProvider = $('input[name="bank_provider"]:checked').val();
+                        if (!bankProvider) {
+                            displayToast("Please select a bank for FPX payment.", "error");
+                            return;
+                        }
                         const checkoutParams = new URLSearchParams({
                             products: productIds,
                             orderType: orderType,
+                            paymentMethod: 'fpx',
+                            bankProvider: bankProvider // ★ 新增：將銀行資訊加入 URL
                         });
                         window.location.href = `delivery.html?${checkoutParams.toString()}`;
                         return;
@@ -893,7 +907,10 @@
                         data: {
                             action: 'place_order',
                             payment_method: 'fpx-initiate',
-                            total_amount: totalAmount
+                            provider: bankProvider,
+                            // Pass required info for backend calculation
+                            product_ids: productIds ? productIds.split(',') : [],
+                            order_type: orderState.orderType
                         },
                         success: function(response) {
                             if (response.status === 'success' && response.order_id) {
@@ -915,6 +932,7 @@
                     const checkoutParams = new URLSearchParams({
                         products: productIds,
                         orderType: orderType,
+                        paymentMethod: 'counter' // Specifically for Cash on Delivery
                     });
                     window.location.href = `delivery.html?${checkoutParams.toString()}`;
                     return;
@@ -923,6 +941,19 @@
                 const totalAmount = parseFloat(totalText.replace('RM', '').trim());
 
                 if (totalAmount > 0) {
+                    // Determine provider for card payments
+                    let provider = 'N/A';
+                    if (paymentMethod === 'card') {
+                        const $icon = $('#card-brand-icon');
+                        if ($icon.hasClass('brand-visa')) {
+                            provider = 'Visa';
+                        } else if ($icon.hasClass('brand-mastercard')) {
+                            provider = 'Mastercard';
+                        } else {
+                            provider = 'Card'; // Generic fallback
+                        }
+                    }
+
                     const urlParams = new URLSearchParams(window.location.search);
                     const productIds = urlParams.get('products');
 
@@ -934,7 +965,9 @@
                             action: 'place_order',
                             product_ids: productIds ? productIds.split(',') : [],
                             order_type: orderState.orderType,
-                            extra_charge: orderState.extraCharge
+                            extra_charge: orderState.extraCharge,
+                            payment_method: paymentMethod,
+                            provider: provider // ★ Pass the detected card brand
                         },
                         success: function(response) {
                             if (response.status === 'success') {

@@ -101,21 +101,44 @@ class AuthController {
     }
 
     private function initiateEWalletOrder() {
-        $total_amount = isset($_POST['total_amount']) ? floatval($_POST['total_amount']) : 0;
-        if ($total_amount <= 0) {
-            echo json_encode(['status' => 'error', 'message' => 'Invalid amount.']);
+        $provider = isset($_POST['provider']) ? $_POST['provider'] : 'Online Payment';
+        $order_type = isset($_POST['order_type']) ? $_POST['order_type'] : 'Dine-In'; // Assume Dine-In if not specified
+        $product_ids = isset($_POST['product_ids']) ? $_POST['product_ids'] : [];
+        $cart_id = $this->getCart($this->user_id);
+
+        if (empty($product_ids) || !$cart_id) {
+            echo json_encode(['status' => 'error', 'message' => 'No products to process.']);
             exit;
         }
+
+        // Securely recalculate total on the backend
+        $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
+        $sql_total = "SELECT SUM(Subtotal) as Total FROM cart_products WHERE Cart_ID = ? AND Product_ID IN ($placeholders)";
+        $types = 's' . str_repeat('i', count($product_ids));
+        $params = array_merge([$cart_id], $product_ids);
+        $stmt_total = $this->conn->prepare($sql_total);
+        $stmt_total->bind_param($types, ...$params);
+        $stmt_total->execute();
+        $total_amount_from_cart = $stmt_total->get_result()->fetch_assoc()['Total'] ?? 0;
+
+        $extra_charge = 0;
+        if ($order_type === 'Take-Away') $extra_charge = 1.00;
+        elseif ($order_type === 'Delivery') $extra_charge = 2.90;
+
+        $final_total = $total_amount_from_cart + ($total_amount_from_cart * 0.06) + $extra_charge;
 
         $order_id = IDHelper::generate($this->conn, 'orders', 'Order_ID', 'ORD');
         $current_time = date('Y-m-d H:i:s');
         $status = 'Pending'; // New status for QR flow
+        $payment_method = isset($_POST['payment_method']) && str_contains($_POST['payment_method'], 'fpx') ? 'Online Banking' : 'E-Wallet';
 
-        $sql_order = "INSERT INTO orders (Order_ID, User_ID, Created_At, Total_Amount, Status) VALUES (?, ?, ?, ?, ?)";
+        // Insert with all details, including order type
+        $sql_order = "INSERT INTO orders (Order_ID, User_ID, Created_At, Total_Amount, Status, Order_Type) VALUES (?, ?, ?, ?, ?, ?)";
         $stmt = $this->conn->prepare($sql_order);
-        $stmt->bind_param("sisds", $order_id, $this->user_id, $current_time, $total_amount, $status);
+        $stmt->bind_param("sisdss", $order_id, $this->user_id, $current_time, $final_total, $status, $order_type);
 
         if ($stmt->execute()) {
+            $this->createPaymentRecord($order_id, $final_total, $payment_method, $provider);
             echo json_encode(['status' => 'success', 'order_id' => $order_id]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to initiate payment.']);
@@ -146,6 +169,11 @@ class AuthController {
         if ($stmt_update->execute()) {
             // Move items from cart to order_products and clear cart
             $this->processCartForOrder($order_id, $user_id_for_cart);
+            // ★ 關鍵修正：更新現有的支付記錄狀態，而不是創建新的
+            $sql_update_payment = "UPDATE payments SET Status = 'COMPLETED' WHERE Order_ID = ?";
+            $stmt_update_payment = $this->conn->prepare($sql_update_payment);
+            $stmt_update_payment->bind_param("s", $order_id);
+            $stmt_update_payment->execute();
             echo json_encode(['status' => 'success', 'message' => 'Order placed successfully', 'order_id' => $order_id]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to confirm order.']);
@@ -155,6 +183,8 @@ class AuthController {
 
     private function createStandardOrder() {
         $product_ids = isset($_POST['product_ids']) && is_array($_POST['product_ids']) ? $_POST['product_ids'] : [];
+        $payment_method_type = isset($_POST['payment_method']) ? $_POST['payment_method'] : 'counter';
+        $provider = isset($_POST['provider']) ? $_POST['provider'] : 'N/A';
         $cart_id = $this->getCart($this->user_id);
 
         if (empty($product_ids) || !$cart_id) {
@@ -183,6 +213,8 @@ class AuthController {
         // Add extra charges for Take-Away or Delivery
         $order_type = isset($_POST['order_type']) ? $_POST['order_type'] : 'Dine-In';
         $delivery_address = isset($_POST['delivery_address']) ? trim($_POST['delivery_address']) : null;
+        $latitude = isset($_POST['latitude']) ? floatval($_POST['latitude']) : null;
+        $longitude = isset($_POST['longitude']) ? floatval($_POST['longitude']) : null;
         $extra_charge = 0;
         if ($order_type === 'Take-Away') {
             $extra_charge = 1.00;
@@ -201,17 +233,53 @@ class AuthController {
         $current_time = date('Y-m-d H:i:s');
         $status = 'Completed'; // Assume direct completion for non-pending flows
 
-        $sql_order = "INSERT INTO orders (Order_ID, User_ID, Created_At, Total_Amount, Status, Order_Type, Delivery_Address) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $sql_order = "INSERT INTO orders (Order_ID, User_ID, Created_At, Total_Amount, Status, Order_Type, Delivery_Address, Latitude, Longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->conn->prepare($sql_order);
-        $stmt->bind_param("sisdsss", $order_id, $this->user_id, $current_time, $final_total, $status, $order_type, $delivery_address);
+        $stmt->bind_param("sisdsssdd", $order_id, $this->user_id, $current_time, $final_total, $status, $order_type, $delivery_address, $latitude, $longitude);
 
         if ($stmt->execute()) {
             $this->processCartForOrder($order_id, $this->user_id, $product_ids);
+            // For counter payments, explicitly set a clear provider name,
+            // otherwise, use the provider sent from the frontend (e.g., 'Visa', 'Mastercard').
+            if ($payment_method_type === 'counter' && $order_type === 'Delivery') {
+                $provider = 'Cash on Delivery';
+            } else if ($payment_method_type === 'counter') {
+                $provider = 'Pay At Counter';
+            }
+            $this->createPaymentRecord($order_id, $final_total, $payment_method_type, $provider);
             echo json_encode(['status' => 'success', 'message' => 'Order placed successfully', 'order_id' => $order_id]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to create order']);
         }
         exit;
+    }
+
+    private function createPaymentRecord($order_id, $amount, $method, $provider) {
+        $payment_id = IDHelper::generate($this->conn, 'payments', 'Payment_ID', 'PAY');
+        // ★ 根據支付流程設定初始狀態
+        $status = (str_contains($method, 'initiate')) ? 'PENDING' : 'COMPLETED';
+        $current_time = date('Y-m-d H:i:s');
+
+        // Normalize payment method for the database enum
+        $db_method = 'Pay At Counter (Cash)'; // Default
+        if (str_contains($method, 'e-wallet')) {
+            $db_method = 'E-Wallet';
+        } elseif (str_contains($method, 'fpx') || $method === 'Online Banking') {
+            $db_method = 'Online Banking';
+        } elseif ($method === 'card') {
+            $db_method = 'Card';
+        } elseif ($method === 'counter') {
+            $db_method = 'Pay At Counter (Cash)';
+        }
+
+        $sql = "INSERT INTO payments (Payment_ID, Order_ID, Total_Amount, Payment_Method, Provider, Status, Created_At)
+                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        
+        $stmt = $this->conn->prepare($sql);
+        if ($stmt) {
+            $stmt->bind_param("ssdssss", $payment_id, $order_id, $amount, $db_method, $provider, $status, $current_time);
+            $stmt->execute(); // We don't need to check for success here, it's a best-effort logging
+        }
     }
 
     private function processCartForOrder($order_id, $user_id, $product_ids = []) {
@@ -325,7 +393,7 @@ class AuthController {
         }
     
         // 1. Get main order info
-        $sql_order = "SELECT Order_ID, Created_At, Total_Amount FROM orders WHERE Order_ID = ? AND User_ID = ?";
+        $sql_order = "SELECT Order_ID, Created_At, Total_Amount, Order_Type FROM orders WHERE Order_ID = ? AND User_ID = ?";
         $stmt_order = $this->conn->prepare($sql_order);
         $stmt_order->bind_param("si", $order_id, $this->user_id);
         $stmt_order->execute();
@@ -749,8 +817,8 @@ class AuthController {
 
                 $items_html .= '
                 <div class="cart-items" data-id="'.$product_id.'" data-price="'.$price.'" data-quantity="'.$quantity.'">
-                    <label id="cart-checkbox" for="cart-item-checkbox">
-                        <input type="checkbox" id="cart-item-checkbox" class="cart-item-checkbox" value="'.$product_id.'">
+                    <label id="cart-checkbox" for="'.$product_id.'">
+                        <input type="checkbox" id="'.$product_id.'" class="cart-item-checkbox" value="'.$product_id.'">
                         <img src="../../Image/Product/'.$image.'">
                     </label>
                     <div class="item-details">

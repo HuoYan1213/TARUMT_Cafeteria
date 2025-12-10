@@ -41,6 +41,10 @@
                 <span>Service Tax (6%)</span>
                 <span id="tax">RM 0.00</span>
             </div>
+            <div class="total-row" id="extra-charge-row" style="display: none;">
+                <span id="extra-charge-label"></span>
+                <span id="extra-charge-amount">RM 0.00</span>
+            </div>
         </div>
         <div class="divider-line"></div>
         <div class="total-amount-row">
@@ -55,6 +59,10 @@
         $(document).ready(function() {
             const urlParams = new URLSearchParams(window.location.search);
             const orderId = urlParams.get('orderId');
+
+            // Prevent going back to payment pages like banking.html or confirmation.html
+            // This replaces the previous page in the session history with the current one.
+            history.replaceState(null, document.title, location.href);
 
             if (orderId) {
                 $.ajax({
@@ -78,7 +86,7 @@
                             // Populate items
                             const itemsList = $('#items-list');
                             itemsList.empty();
-                            let subtotal = 0;
+                            let itemsSubtotal = 0;
                             data.items.forEach(item => {
                                 const itemHtml = `
                                     <div class="items-row">
@@ -87,15 +95,35 @@
                                     </div>
                                 `;
                                 itemsList.append(itemHtml);
-                                subtotal += parseFloat(item.Subtotal);
+                                itemsSubtotal += parseFloat(item.Subtotal);
                             });
 
                             // Populate totals
-                            const tax = subtotal * 0.06;
-                            const total = subtotal + tax;
-                            $('#subtotal').text(`RM ${subtotal.toFixed(2)}`);
+                            let extraCharge = 0;
+                            let extraChargeLabel = '';
+
+                            if (data.Order_Type === 'Take-Away') {
+                                extraCharge = 1.00;
+                                extraChargeLabel = 'Packaging Charge';
+                            } else if (data.Order_Type === 'Delivery') {
+                                extraCharge = 2.90;
+                                extraChargeLabel = 'Delivery Fee';
+                            }
+
+                            if (extraCharge > 0) {
+                                $('#extra-charge-label').text(extraChargeLabel);
+                                $('#extra-charge-amount').text(`RM ${extraCharge.toFixed(2)}`);
+                                $('#extra-charge-row').show();
+                            }
+
+                            // Use the total from the database for accuracy, as it's the source of truth
+                            const finalTotal = parseFloat(data.Total_Amount); 
+                            // To ensure all numbers add up, we derive the subtotal from the final total
+                            const subtotalFromTotal = (finalTotal - extraCharge) / 1.06;
+                            const tax = subtotalFromTotal * 0.06;
+                            $('#subtotal').text(`RM ${subtotalFromTotal.toFixed(2)}`);
                             $('#tax').text(`RM ${tax.toFixed(2)}`);
-                            $('#total-amount').text(`RM ${total.toFixed(2)}`);
+                            $('#total-amount').text(`RM ${finalTotal.toFixed(2)}`);
 
                         } else {
                             $('.receipt-container').html(`<h1>Error</h1><p>${response.message}</p>`);
@@ -111,15 +139,11 @@
 
             // --- Back Button Logic ---
             const fromPage = urlParams.get('from');
-            const referrer = document.referrer;
             const backButton = $('#back-button');
 
             if (fromPage === 'history') {
                 // Case 1: Coming from the order history page
                 backButton.text('Back to History');
-            } else if (referrer.includes('confirmation.html')) {
-                // Case 2: Coming from a payment flow, hide the button
-                backButton.hide();
             }
 
             // Add the click handler for the button

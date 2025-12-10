@@ -42,7 +42,7 @@ CREATE TABLE `cart_products` (
 
 LOCK TABLES `cart_products` WRITE;
 /*!40000 ALTER TABLE `cart_products` DISABLE KEYS */;
-INSERT INTO `cart_products` VALUES ('25CP0001',1,1,1,11.90),('25CP002',2,1,1,9.90);
+INSERT INTO `cart_products` VALUES ('25CP0001',1,1,1,11.90);
 /*!40000 ALTER TABLE `cart_products` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -99,7 +99,6 @@ CREATE TABLE `order_products` (
 
 LOCK TABLES `order_products` WRITE;
 /*!40000 ALTER TABLE `order_products` DISABLE KEYS */;
-INSERT INTO `order_products` VALUES ('25OPI001','25ORD003',1,1,11.90),('25OPI002','25ORD004',1,1,11.90),('25OPI003','25ORD005',1,1,11.90),('25OPI004','25ORD006',1,2,23.80),('25OPI005','25ORD007',1,1,11.90),('25OPI006','25ORD008',1,1,11.90),('25OPI007','25ORD009',1,1,11.90),('25OPI008','25ORD010',1,1,11.90),('25OPI009','25ORD011',1,1,11.90),('25OPI010','25ORD012',1,2,23.80),('25OPI011','25ORD013',1,1,11.90),('25OPI012','25ORD015',1,1,11.90),('25OPI013','25ORD016',1,1,11.90),('25OPI014','25ORD017',1,3,35.70),('25OPI015','25ORD018',1,1,11.90),('25OPI016','25ORD019',1,1,11.90),('25OPI017','25ORD021',5,1,3.00),('25OPI018','25ORD021',10,1,2.00),('25OPI019','25ORD022',10,1,2.00),('25OPI020','25ORD022',8,1,8.90),('25OPI021','25ORD022',9,1,8.90);
 /*!40000 ALTER TABLE `order_products` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -114,6 +113,8 @@ CREATE TABLE `orders` (
   `Order_ID` char(8) NOT NULL,
   `Total_Amount` decimal(6,2) NOT NULL,
   `Delivery_Address` varchar(150) DEFAULT NULL,
+  `Latitude` decimal(10,0) DEFAULT NULL,
+  `Longitude` decimal(10,0) DEFAULT NULL,
   `Order_Type` enum('Dine-In','Take-Away','Delivery') NOT NULL DEFAULT 'Dine-In',
   `Created_At` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `Status` enum('Pending','Completed','Cancelled') NOT NULL DEFAULT 'Pending',
@@ -130,7 +131,6 @@ CREATE TABLE `orders` (
 
 LOCK TABLES `orders` WRITE;
 /*!40000 ALTER TABLE `orders` DISABLE KEYS */;
-INSERT INTO `orders` VALUES ('25ORD001',12.61,NULL,'Dine-In','2025-12-06 13:55:18','Pending',2),('25ORD002',12.61,NULL,'Dine-In','2025-12-06 13:57:45','Pending',2),('25ORD003',12.61,NULL,'Dine-In','2025-12-06 13:59:40','Pending',2),('25ORD004',12.61,NULL,'Dine-In','2025-12-06 14:08:35','Pending',2),('25ORD005',12.61,NULL,'Dine-In','2025-12-06 14:50:21','Pending',2),('25ORD006',25.23,NULL,'Dine-In','2025-12-06 15:06:13','Pending',2),('25ORD007',12.61,NULL,'Dine-In','2025-12-06 15:12:07','Pending',2),('25ORD008',12.61,NULL,'Dine-In','2025-12-06 15:13:08','Pending',2),('25ORD009',12.61,NULL,'Dine-In','2025-12-07 11:31:19','Pending',2),('25ORD010',12.61,NULL,'Dine-In','2025-12-07 18:15:27','Pending',2),('25ORD011',12.61,NULL,'Dine-In','2025-12-07 18:35:36','Pending',2),('25ORD012',25.23,NULL,'Dine-In','2025-12-08 08:10:55','Pending',2),('25ORD013',12.61,NULL,'Dine-In','2025-12-08 08:25:25','Pending',2),('25ORD014',12.61,NULL,'Dine-In','2025-12-08 08:48:34','Pending',2),('25ORD015',12.61,NULL,'Dine-In','2025-12-08 08:51:35','Completed',2),('25ORD016',12.61,NULL,'Dine-In','2025-12-08 09:01:18','Completed',2),('25ORD017',37.84,NULL,'Dine-In','2025-12-08 11:01:44','Completed',3),('25ORD018',12.61,NULL,'Dine-In','2025-12-08 11:08:02','Completed',2),('25ORD019',12.61,NULL,'Dine-In','2025-12-08 11:20:02','Completed',2),('25ORD020',5.30,NULL,'Dine-In','2025-12-09 00:13:23','Pending',2),('25ORD021',5.30,NULL,'Dine-In','2025-12-09 00:13:23','Completed',2),('25ORD022',20.99,NULL,'Dine-In','2025-12-09 04:14:12','Completed',2),('25ORD023',10.49,NULL,'Dine-In','2025-12-09 12:40:01','Pending',2),('25ORD024',10.49,NULL,'Dine-In','2025-12-09 12:40:43','Pending',2);
 /*!40000 ALTER TABLE `orders` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -143,7 +143,7 @@ DROP TABLE IF EXISTS `payments`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `payments` (
   `Payment_ID` char(8) NOT NULL,
-  `Payment_Method` enum('Online Banking','E-Wallet','Pay At Counter (Cash)') NOT NULL DEFAULT 'Online Banking',
+  `Payment_Method` enum('Online Banking','Card','E-Wallet','Pay At Counter (Cash)') NOT NULL DEFAULT 'Online Banking',
   `Provider` varchar(50) NOT NULL,
   `Total_Amount` decimal(6,2) NOT NULL,
   `Status` enum('PENDING','COMPLETED','FAILED','REFUNDED') NOT NULL,
@@ -189,7 +189,7 @@ CREATE TABLE `products` (
 
 LOCK TABLES `products` WRITE;
 /*!40000 ALTER TABLE `products` DISABLE KEYS */;
-INSERT INTO `products` VALUES (1,'Cappuccino','Espresso topped with steamed milk and froth—creamy, balanced, and comforting.','Coffee',9.90,'cappuccino.jpeg',0),(2,'Daan Ji','Crispy toast filled with a perfectly fried egg and a touch of sauce—simple, comforting, and a Malaysian breakfast classic.','LightBite',5.90,'daanji.png',0),(3,'Honey Waffle','Golden, crispy waffles drizzled with sweet honey—perfectly soft on the inside and delightfully crunchy on the outside. A treat for any time of the day.','LightBite',10.90,'honeywaffle.jpg',0),(4,'Takoyaki','Crispy on the outside, soft and savory on the inside, filled with tender octopus and topped with savory sauces, mayo, and bonito flakes—a Japanese street food favorite!','LightBite',7.00,'takoyaki.jpg',0),(5,'Nasi Lemak','Steamed coconut rice served with spicy sambal, fried anchovies, peanuts, boiled egg, and cucumber. A Malaysian classic that warms the soul.','HotMeal',3.00,'nasilemak.jpg',1),(6,'Spaghetti Bolognese','Pasta tossed in a rich, meaty tomato sauce, topped with Parmesan. Simple, flavorful, and always a favorite.','HotMeal',12.90,'spaghetti.jpg',0),(7,'Fish & Chips','Crispy battered fish served with golden fries and tartar sauce. A classic that’s warm, crunchy, and delicious.','HotMeal',12.90,'fish&chips.jpeg',0),(8,'Espresso (Hot)','Rich and bold, a concentrated shot of pure coffee flavor—perfect for a quick energy boost.','Coffee',8.90,'espresso.webp',1),(9,'Latte (Hot)','Espresso with steamed milk, lightly sweet and smooth—ideal for any time of day.','Coffee',8.90,'latte.jpg',1),(10,'Green Tea (Hot)','Light and soothing, packed with antioxidants for a gentle pick-me-up.','Tea',2.00,'greentea.jpeg',2),(11,'Oolong Tea (Hot)','Partially fermented tea with a smooth, aromatic taste—rich and mellow.','Tea',2.90,'oolongtea.jpeg',0),(12,'English Breakfast Tea (Hot)','Classic black tea with a robust flavor—perfect for starting your day.','Tea',3.50,'englishtea.jpeg',0);
+INSERT INTO `products` VALUES (1,'Cappuccino','Espresso topped with steamed milk and froth—creamy, balanced, and comforting.','Coffee',9.90,'cappuccino.jpeg',1),(2,'Daan Ji','Crispy toast filled with a perfectly fried egg and a touch of sauce—simple, comforting, and a Malaysian breakfast classic.','LightBite',5.90,'daanji.png',0),(3,'Honey Waffle','Golden, crispy waffles drizzled with sweet honey—perfectly soft on the inside and delightfully crunchy on the outside. A treat for any time of the day.','LightBite',10.90,'honeywaffle.jpg',0),(4,'Takoyaki','Crispy on the outside, soft and savory on the inside, filled with tender octopus and topped with savory sauces, mayo, and bonito flakes—a Japanese street food favorite!','LightBite',7.00,'takoyaki.jpg',2),(5,'Nasi Lemak','Steamed coconut rice served with spicy sambal, fried anchovies, peanuts, boiled egg, and cucumber. A Malaysian classic that warms the soul.','HotMeal',3.00,'nasilemak.jpg',2),(6,'Spaghetti Bolognese','Pasta tossed in a rich, meaty tomato sauce, topped with Parmesan. Simple, flavorful, and always a favorite.','HotMeal',12.90,'spaghetti.jpg',0),(7,'Fish & Chips','Crispy battered fish served with golden fries and tartar sauce. A classic that’s warm, crunchy, and delicious.','HotMeal',12.90,'fish&chips.jpeg',1),(8,'Espresso (Hot)','Rich and bold, a concentrated shot of pure coffee flavor—perfect for a quick energy boost.','Coffee',8.90,'espresso.webp',1),(9,'Latte (Hot)','Espresso with steamed milk, lightly sweet and smooth—ideal for any time of day.','Coffee',8.90,'latte.jpg',1),(10,'Green Tea (Hot)','Light and soothing, packed with antioxidants for a gentle pick-me-up.','Tea',2.00,'greentea.jpeg',2),(11,'Oolong Tea (Hot)','Partially fermented tea with a smooth, aromatic taste—rich and mellow.','Tea',2.90,'oolongtea.jpeg',1),(12,'English Breakfast Tea (Hot)','Classic black tea with a robust flavor—perfect for starting your day.','Tea',3.50,'englishtea.jpeg',0);
 /*!40000 ALTER TABLE `products` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -218,7 +218,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'HuoYan','123456','0123456789','huoyan0928@gmail.com',NULL,NULL),(2,'Phon Mei Xin','$2y$12$MOJ3V3DY8XgahCArct0AD.quzKHCtg77xizZYx1My6nxlLN86670m','01123456789','2@gmail.com',NULL,NULL),(3,'Jack','$2y$12$qkveureF5AIJWpt7i.aDHeBPQ9haGr8WwpyCDxKpgrMSKywpgbFxW','0123456788','123@gmail.com',NULL,NULL);
+INSERT INTO `users` VALUES (1,'HuoYan','123456','0123456789','huoyan0928@gmail.com',NULL,NULL),(2,'Phon Mei Xin','$2y$12$MOJ3V3DY8XgahCArct0AD.quzKHCtg77xizZYx1My6nxlLN86670m','01123456789','2@gmail.com','CS-1-01, Unisuites Kampar, Perak',NULL),(3,'Jack','$2y$12$qkveureF5AIJWpt7i.aDHeBPQ9haGr8WwpyCDxKpgrMSKywpgbFxW','0123456788','123@gmail.com',NULL,NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -231,4 +231,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-12-10  0:21:17
+-- Dump completed on 2025-12-10  6:10:19

@@ -1,89 +1,196 @@
 <title>Menu</title>
 
-<div class="menu-title">
-    <h1>OUR MENU</h1>
-    <span>A Taste Of Home On Campus</span>
-</div>
+<!-- Page-flip library -->
+<script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.js"></script>
 
 <div class="menu-container">
-    <div class="category-group">
-        <button id="coffee-series" class="ajax-button active" data-category="Coffee">Coffees</button>
-        <button id="tea-series" class="ajax-button" data-category="Tea">Teas</button>
-        <button id="lightbite-series" class="ajax-button" data-category="LightBite">Light Bites</button>
-        <button id="hotmeal-series" class="ajax-button" data-category="HotMeal">Hot Meals</button>
+    <div class="scene-container">
+        <button class="nav-btn" id="prev-btn"><i class="fa-solid fa-chevron-left"></i></button>
+        
+        <div class="book-wrapper">
+            <div id="menu-book">
+                <!-- Page 0: Hard Cover -->
+                <div class="page --hard">
+                    <div class="cover-content">
+                        <h1>TARUMT<br>CAFETERIA</h1>
+                        <p>MENU</p>
+                        <p style="margin-top: 50px; font-size: 12px;">Click or Drag to Open</p>
+                    </div>
+                </div>
+
+                <!-- Page 1: Blank page for the back of the cover -->
+                <div class="page"></div>
+
+                <!-- Page 2: Table of Contents -->
+                <div class="page" id="toc-page">
+                    <h2 class="menu-header">Table of Contents</h2>
+                    <ul class="toc-list">
+                        <li data-target-page="3">
+                            <span>Coffee</span>
+                            <span class="page-connected">Page 1</span>
+                        </li>
+                        <li data-target-page="4">
+                            <span>Tea</span>
+                            <span class="page-connected">Page 2</span>
+                        </li>
+                        <li data-target-page="5">
+                            <span>Light Bites</span>
+                            <span class="page-connected">Page 3</span>
+                        </li>
+                        <li data-target-page="6">
+                            <span>Hot Meals</span>
+                            <span class="page-connected">Page 4</span>
+                        </li>
+                    </ul>
+                    <div class="page-number">- i -</div>
+                </div>
+
+                <!-- Page 3: Coffees -->
+                <div class="page" data-category="Coffee">
+                    <h2 class="menu-header">Coffees</h2>
+                    <div class="page-content"></div>
+                    <div class="page-number">- 1 -</div>
+                </div>
+        
+                <!-- Page 4: Teas -->
+                <div class="page" data-category="Tea">
+                    <h2 class="menu-header">Teas</h2>
+                    <div class="page-content"></div>
+                    <div class="page-number">- 2 -</div>
+                </div>
+        
+                <!-- Page 5: Light Bites -->
+                <div class="page" data-category="LightBite">
+                    <h2 class="menu-header">Light Bites</h2>
+                    <div class="page-content"></div>
+                    <div class="page-number">- 3 -</div>
+                </div>
+        
+                <!-- Page 6: Hot Meals -->
+                <div class="page" data-category="HotMeal">
+                    <h2 class="menu-header">Hot Meals</h2>
+                    <div class="page-content"></div>
+                    <div class="page-number">- 4 -</div>
+                </div>
+
+                <!-- Page 8: Blank -->
+                <div class="page"></div>
+
+                <!-- Page 9: Logo Page (front of back cover) -->
+                <div class="page">
+                    <div class="cover-content">
+                        <img src="../../Icon/logo.png" alt="Logo" style="width: 80px; opacity: 0.7;">
+                    </div>
+                </div>
+
+                <!-- Page 10: Back Cover -->
+                <div class="page --hard"></div>
+            </div>
+        </div>
+
+        <button class="nav-btn" id="next-btn"><i class="fa-solid fa-chevron-right"></i></button>
     </div>
-    <section id="category-content"></section>
 </div>
 
 <script>
     $(document).ready(function() {
-        function loadProducts(category) {
-            $('#category-content').html('<span id="loading-text">Loading...</p>');
+        setTimeout(function() {
+            // Initialize Page-Flip
+            const pageFlip = new St.PageFlip(document.getElementById('menu-book'), {
+                width: 400,
+                height: 600, 
+                size: 'fixed',
+                minWidth: 800,
+                maxWidth: 1000,
+                maxShadowOpacity: 0.5,
+                showCover: true,
+                useMouseEvents: false // ★ 關鍵修改：禁用所有滑鼠翻頁互動
+            });
+            pageFlip.loadFromHTML(document.querySelectorAll('.page'));
 
-            $.ajax({
-                url: '../../Controller/AuthController.php', 
-                type: 'POST',
-                data: {
-                    action: 'get_products',
-                    category: category
-                },
-                success: function(response) {
-                    $('#category-content').html(response);
-                },
-                error: function() {
-                    displayToast("Failed to load products.", "error");
-                    $('#category-content').html('<p id="error-text">Error loading products.</p>');
+            // Function to load products for a specific category page
+            function loadProductsForPage(pageElement) {
+                const category = $(pageElement).data('category');
+                const contentDiv = $(pageElement).find('.page-content');
+            
+                contentDiv.html('<span id="loading-text">Loading...</span>');
+
+                $.ajax({
+                    url: '../../Controller/AuthController.php', 
+                    type: 'POST',
+                    data: {
+                        action: 'get_products',
+                        category: category
+                    },
+                    success: function(response) {
+                        contentDiv.html(response);
+                    },
+                    error: function() {
+                        displayToast("Failed to load products.", "error");
+                        contentDiv.html('<p id="error-text">Error loading products.</p>');
+                    }
+                });
+            }
+
+            // Load content for product pages on initial load
+            $('.page[data-category]').each(function() {
+                loadProductsForPage(this);
+            });
+
+            // Handle Table of Contents clicks
+            $(document).on('click', '.toc-list li', function(event) {
+                const pageIndex = $(this).data('target-page');
+
+                if (pageIndex !== undefined) {
+                    pageFlip.flip(parseInt(pageIndex)); 
                 }
             });
-        }
 
-        loadProducts('Coffee');
+            // Show nav buttons once the book is opened (after the cover)
+            $('#prev-btn').on('click', () => pageFlip.flipPrev());
+            $('#next-btn').on('click', () => pageFlip.flipNext());
 
-        $(document).on('click', '.category-group .ajax-button', function() {
-            $('.category-group .ajax-button').removeClass('active');
-            $(this).addClass('active');
+            // Keep the "Add to Cart" functionality
+            $(document).on('click', '.add-cart-button', function(e) {
+                e.preventDefault();
 
-            let category = $(this).data('category');
-            loadProducts(category);
-        });
+                let id = $(this).data('id');
+                let $button = $(this);  
 
+                if($button.prop('disabled')) return;
 
-        $(document).on('click', '.add-cart-button', function(e) {
-            e.preventDefault();
+                let originalText = $button.text();
+                $button.prop('disabled', true).text('Adding...');
 
-            let id = $(this).data('id');
-            let $button = $(this);  
-
-            if($button.prop('disabled')) return;
-
-            let originalText = $button.text();
-            $button.prop('disabled', true).text('Adding...');
-
-            $.ajax({
-                url: '../../Controller/AuthController.php',
-                type: 'POST',
-                dataType: 'json', 
-                data: { 
-                    action: 'add_cart', 
-                    product_id: id 
-                },
-                success: function(response) {
-                    if (response.status === 'success') {
-                        displayToast("Added to cart successfully!", "success");                    
+                $.ajax({
+                    url: '../../Controller/AuthController.php',
+                    type: 'POST',
+                    dataType: 'json', 
+                    data: { 
+                        action: 'add_cart', 
+                        product_id: id 
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            displayToast("Added to cart successfully!", "success");                    
+                        }
+                        else {
+                            displayToast("Error: " + response.message, "error");
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("AJAX Error:", error);
+                        console.log(xhr.responseText); 
+                        displayToast("Server Error. Please try again.", "error");
+                    },
+                    complete: function() {
+                        $button.prop('disabled', false).text(originalText);
                     }
-                    else {
-                        displayToast("Error: " + response.message, "error");
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error("AJAX Error:", error);
-                    console.log(xhr.responseText); 
-                    displayToast("Server Error. Please try again.", "error");
-                },
-                complete: function() {
-                    $button.prop('disabled', false).text(originalText);
-                }
+                });
             });
-        });
+
+            // Event listener for when the page flips
+            // We no longer need to hide/show buttons on flip
+        }, 50); // A 50ms delay is usually enough
     });
 </script>

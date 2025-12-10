@@ -176,10 +176,8 @@ $(document).ready(function() {
         }
     });
 
-    // Trigger file input when clicking the profile image container in edit mode
-    $(document).on('click', '.profile-image-container.edit-mode', function(event) {
+    $(document).on('click', '.edit-overlay', function() {
         $('#profile-picture-upload').click();
-        event.stopPropagation(); // 防止事件冒泡
     });
 
     // Preview the selected image

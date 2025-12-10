@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../../CSS/auth.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="shortcut icon" href="../../Icon/logo.png">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="../../JS/script.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <title>Delivery Address</title>
     <style>
         body.delivery {
@@ -15,19 +17,35 @@
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            padding-top: 20px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .delivery-wrapper {
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 600px;
+            height: 100%;;
         }
 
         .delivery-container {
+            box-sizing: border-box;
             width: 100%;
-            max-width: 500px;
             background: #FDFDFD;
-            padding: 30px 40px;
+            padding: 21px 30px;
+            padding-bottom: 15px;
             border-radius: 10px;
             box-shadow: 0 0 15px #00000020;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+        }
+
+        .delivery-container header {
+            box-sizing: border-box;
+            width: 100%;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
         }
 
         .delivery-container h2 {
@@ -43,7 +61,9 @@
         .input-group {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            margin: 3px 0;
+            margin-bottom: 8px;
+            gap: 5px;
         }
 
         .input-group label {
@@ -53,7 +73,7 @@
             color: var(--text-secondary);
         }
 
-        .input-group textarea {
+        .input-group input[type="text"] {
             width: 100%;
             padding: 12px;
             border: 1px solid #CCC;
@@ -61,11 +81,10 @@
             font-family: var(--lora);
             box-sizing: border-box;
             outline: none;
-            resize: vertical;
-            min-height: 100px;
+            background-color: #FFFFFF;
         }
 
-        .input-group textarea:focus {
+        .input-group input[type="text"]:focus {
             border-color: #A64B2A;
         }
 
@@ -89,30 +108,246 @@
         #confirm-delivery-button:hover {
             background: var(--button-hover-background);
         }
+
+        #cancel-button {
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            margin-top: 10px;
+            cursor: pointer;
+            font-family: var(--lora);
+            font-weight: 600;
+            width: fit-content;
+            margin: auto;
+            margin-top: 12px;
+            padding: 5px;
+        }
+
+        #cancel-button:hover {
+            text-decoration: underline;
+        }
+
+        #map { 
+            height: 260px; 
+            width: 100%; 
+            margin-bottom: 18px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            z-index: 1;
+        }
+
+        .default-address-container {
+            display: none;
+            background-color: #FFF9F2;
+            border: 1px dashed #DCCEB8;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .default-address-container p {
+            margin: 0;
+            font-family: var(--lora);
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .default-address-container button {
+            margin-top: 10px;
+            background: #B5C4AA;
+            color: #333;
+            border: none;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            margin-left: auto;
+            margin-top: -30px;
+        }
     </style>
 </head>
 <body class="delivery">
-    <div class="delivery-container">
-        <h2>Delivery Address</h2>
-        <div class="input-group">
-            <label for="delivery-address">Please enter your full address:</label>
-            <textarea id="delivery-address" placeholder="e.g., Block A, Level 3, Room 123, TARUMT KL Campus, Jalan Genting Kelang, Setapak, 53300 Kuala Lumpur"></textarea>
+    <div class="delivery-wrapper">
+        <div class="delivery-container">
+            <h2>Select Delivery Address</h2>
+
+            <div class="default-address-container">
+                <p>
+                    <strong>Your Default Address:</strong><br>
+                    <span id="default-address-text"></span>
+                </p>
+                <button id="use-default-address">Use this address</button>
+            </div>
+
+            <p style="font-family: var(--lora); font-size: 14px; text-align: center; color: #888; margin: 10px 0 5px 0;">Drag the marker or click on the map to select your location.</p>
+            <div id="map"></div>
+
+            <!-- Hidden fields for coordinates -->
+            <input type="hidden" id="latitude" name="latitude">
+            <input type="hidden" id="longitude" name="longitude">
+
+            <div class="input-group">
+                <label for="map-address">Area / Road (from map)</label>
+                <input type="text" id="map-address" placeholder="Select a location on the map..." readonly style="background-color: #f0f0f0; cursor: not-allowed;">
+            </div>
+
+            <div class="input-group">
+                <label for="house-details">House No. / Unit / Floor (Required)</label>
+                <input type="text" id="house-details" placeholder="e.g., Block A, Unit 1-1 or No. 123">
+            </div>
+
+            <button id="confirm-delivery-button">Confirm & Place Order</button>
+            <button id="cancel-button">Cancel</button>
         </div>
-        <button id="confirm-delivery-button">Confirm Address & Place Order</button>
     </div>
 
     <script>
         $(document).ready(function() {
+            // --- Map Configuration ---
+            const centerLat = 4.332037222098718; 
+            const centerLng = 101.14353841704477;
+            const radiusKm = 1.5;
+            const centerPoint = L.latLng(centerLat, centerLng);
+            const radiusMeters = radiusKm * 1000;
+
+            // --- Map Initialization ---
+            var map = L.map('map', {
+                center: centerPoint,
+                zoom: 15,
+                minZoom: 14,
+                maxBoundsViscosity: 1.0
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            var deliveryCircle = L.circle(centerPoint, {
+                color: '#007BFF', 
+                fillColor: '#007BFF', 
+                fillOpacity: 0.1, 
+                radius: radiusMeters
+            }).addTo(map);
+            
+            map.setMaxBounds(deliveryCircle.getBounds().pad(0.1));
+
+            var marker = L.marker(centerPoint, { 
+                draggable: true 
+            }).addTo(map);
+
+            // --- Functions ---
+            function checkDeliveryZone(latlng) {
+                return map.distance(latlng, centerPoint) <= radiusMeters;
+            }
+
+            function updateAddressInput(lat, lng) {
+                $('#map-address').val("Loading address...");
+                $('#latitude').val(lat);
+                $('#longitude').val(lng);
+
+                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&countrycodes=my`;
+                $.getJSON(url, function(data) {
+                    if (data && data.display_name) {
+                        $('#map-address').val(data.display_name);
+                    } else {
+                        $('#map-address').val("Address not found for this location.");
+                    }
+                }).fail(function() {
+                    $('#map-address').val("Error fetching address.");
+                });
+            }
+
+            // --- Event Handlers ---
+            marker.on('dragend', function(event) {
+                var position = marker.getLatLng();
+                if (!checkDeliveryZone(position)) {
+                    displayToast(`Sorry! We only deliver within ${radiusKm}km.`, "error");
+                    marker.setLatLng(centerPoint);
+                    updateAddressInput(centerPoint.lat, centerPoint.lng);
+                } else {
+                    updateAddressInput(position.lat, position.lng);
+                }
+            });
+
+            map.on('click', function(e) {
+                if (checkDeliveryZone(e.latlng)) {
+                    marker.setLatLng(e.latlng);
+                    updateAddressInput(e.latlng.lat, e.latlng.lng);
+                } else {
+                    displayToast("This location is out of our delivery zone.", "error");
+                }
+            });
+
+            // --- Default Address Logic ---
+            $.ajax({
+                url: '../../Controller/AuthController.php',
+                type: 'POST',
+                dataType: 'json',
+                data: { action: 'get_profile_details' },
+                success: function(response) {
+                    if (response.status === 'success' && response.data.Default_Address) {
+                        const defaultAddress = response.data.Default_Address;
+                        $('#default-address-text').text(defaultAddress);
+                        $('.default-address-container').show();
+                    }
+                }
+            });
+
+            $('#use-default-address').on('click', function() {
+                const address = $('#default-address-text').text();
+                const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=my`;
+                
+                $(this).text('Verifying...').prop('disabled', true);
+
+                $.getJSON(url, function(data) {
+                    if (data && data.length > 0) {
+                        const location = data[0];
+                        const latlng = L.latLng(location.lat, location.lon);
+                        if (checkDeliveryZone(latlng)) {
+                            marker.setLatLng(latlng);
+                            map.panTo(latlng);
+                            $('#map-address').val(address); // Update map address, user still needs to input house details
+                            displayToast("Default address set!", "success");
+                        } else {
+                            displayToast("Your default address is outside our delivery zone.", "error");
+                        }
+                    } else {
+                        displayToast("Could not find your default address on the map.", "error");
+                    }
+                }).fail(function() {
+                    displayToast("Error verifying address.", "error");
+                }).always(function() {
+                    $('#use-default-address').text('Use this address').prop('disabled', false);
+                });
+            });
+
+            // --- Form Submission ---
             $('#confirm-delivery-button').on('click', function() {
-                const address = $('#delivery-address').val().trim();
-                if (!address) {
-                    displayToast("Please enter a delivery address.", "error");
+                const houseDetails = $('#house-details').val().trim();
+                const mapAddress = $('#map-address').val().trim();
+                
+                if (!houseDetails) {
+                    displayToast("Please enter your House No. / Unit details.", "error");
                     return;
                 }
+                if (!mapAddress || mapAddress === "Loading address...") {
+                    displayToast("Please select a valid delivery address on the map.", "error");
+                    return;
+                }
+
+                // Concatenate the address parts
+                const fullAddress = `${mapAddress} (${houseDetails})`;
 
                 const urlParams = new URLSearchParams(window.location.search);
                 const productIds = urlParams.get('products');
                 const orderType = urlParams.get('orderType');
+                const paymentMethod = urlParams.get('paymentMethod') || 'Delivery'; // Default to 'Delivery'
+                const bankProvider = urlParams.get('bankProvider'); // ★ 新增：從 URL 讀取銀行資訊
+                const latitude = $('#latitude').val();
+                const longitude = $('#longitude').val();
 
                 $.ajax({
                     url: '../../Controller/AuthController.php',
@@ -122,13 +357,23 @@
                         action: 'place_order',
                         product_ids: productIds ? productIds.split(',') : [],
                         order_type: orderType,
-                        delivery_address: address,
-                        payment_method: 'Delivery' // Indicate this is a delivery order
+                        delivery_address: fullAddress,
+                        payment_method: paymentMethod,
+                        provider: bankProvider, // ★ 新增：將銀行資訊傳給後端
+                        latitude: latitude,
+                        longitude: longitude
                     },
                     success: function(response) {
                         if (response.status === 'success') {
                             displayToast(response.message, 'success');
                             if (response.order_id) {
+                                // If FPX and Delivery redirect to banking page
+                                if (paymentMethod === 'fpx' && bankProvider) {
+                                    const bankingUrl = `banking.html?oid=${response.order_id}&bank=${bankProvider}`;
+                                    window.location.href = bankingUrl;
+                                    return;
+                                }
+
                                 // Redirect to receipt page after successful order placement
                                 window.location.href = `receipt.html?orderId=${response.order_id}`;
                             }
@@ -142,6 +387,13 @@
                     }
                 });
             });
+
+            $('#cancel-button').on('click', function() {
+                history.back();
+            });
+
+            // Initial address load
+            updateAddressInput(centerPoint.lat, centerLng);
         });
     </script>
 </body>
