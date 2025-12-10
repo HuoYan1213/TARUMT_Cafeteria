@@ -8,6 +8,37 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="../../JS/script.js"></script>
+    <style>
+        /* Style for the music toggle button */
+        #music-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        #music-toggle-button, #music-next-button {
+            width: 50px;
+            height: 50px;
+            background-color: #2c1b1899;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s ease;
+        }
+
+        #music-toggle-button:hover, #music-next-button:hover {
+            background: #43292599;
+        }
+    </style>
 </head>
 <body>
     <img class="decoration" id="decoration-1" src="../../Icon/decoration.png">
@@ -23,6 +54,14 @@
         <button class="ajax-button" id="profile-button" data-get="profile.html">Profile</button>
     </nav>
     <section id="ajax-result"></section>
+
+    <!-- Background music player -->
+    <audio id="background-music" autoplay></audio>
+    <!-- Music control buttons -->
+    <div id="music-controls">
+        <button id="music-toggle-button"><i class="fa-solid fa-music"></i></button>
+        <button id="music-next-button"><i class="fa-solid fa-forward-step"></i></button>
+    </div>
 
     <script>
         $(document).ready(function () {
@@ -62,6 +101,54 @@
             $('nav .ajax-button').removeClass("enabled");
             $(this).addClass("enabled");
         });
+
+        // --- Music Player Logic ---
+        const music = document.getElementById('background-music');
+        const musicButton = $('#music-toggle-button');
+        const nextButton = $('#music-next-button');
+        const songList = [
+            '../../Audio/OurJourney.mp3',
+            '../../Audio/Haggstrom.mp3'
+        ];
+        let currentSongIndex = 0;
+
+        function playSong(index) {
+            music.src = songList[index];
+            let playPromise = music.play();
+
+            if (playPromise !== undefined) {
+                playPromise.then(_ => {
+                    musicButton.html('<i class="fa-solid fa-pause"></i>');
+                }).catch(error => {
+                    musicButton.html('<i class="fa-solid fa-play"></i>');
+                });
+            }
+        }
+
+        function playNextSong() {
+            currentSongIndex = (currentSongIndex + 1) % songList.length;
+            playSong(currentSongIndex);
+        }
+
+         // Initial setup
+        music.volume = 0.3; // Set a lower initial volume
+        playSong(currentSongIndex); // Play the first song
+
+        musicButton.on('click', function() {
+            if (music.paused) {
+                music.play();
+                $(this).html('<i class="fa-solid fa-pause"></i>');
+            } else {
+                music.pause();
+                $(this).html('<i class="fa-solid fa-play"></i>');
+            }
+        });
+
+        // Next song button handler
+        nextButton.on('click', playNextSong);
+
+        // When a song ends, play the next one
+        music.addEventListener('ended', playNextSong);
     </script>
 </body>
 </html>

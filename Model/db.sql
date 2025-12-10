@@ -42,7 +42,6 @@ CREATE TABLE `cart_products` (
 
 LOCK TABLES `cart_products` WRITE;
 /*!40000 ALTER TABLE `cart_products` DISABLE KEYS */;
-INSERT INTO `cart_products` VALUES ('25CP0001',1,1,1,11.90);
 /*!40000 ALTER TABLE `cart_products` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -59,7 +58,7 @@ CREATE TABLE `carts` (
   PRIMARY KEY (`Cart_ID`),
   KEY `fk_user_id_cart_idx` (`User_ID`),
   CONSTRAINT `fk_user_id_cart` FOREIGN KEY (`User_ID`) REFERENCES `users` (`User_ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -68,7 +67,6 @@ CREATE TABLE `carts` (
 
 LOCK TABLES `carts` WRITE;
 /*!40000 ALTER TABLE `carts` DISABLE KEYS */;
-INSERT INTO `carts` VALUES (1,1),(2,2),(3,3);
 /*!40000 ALTER TABLE `carts` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -112,9 +110,9 @@ DROP TABLE IF EXISTS `orders`;
 CREATE TABLE `orders` (
   `Order_ID` char(8) NOT NULL,
   `Total_Amount` decimal(6,2) NOT NULL,
-  `Delivery_Address` varchar(150) DEFAULT NULL,
-  `Latitude` decimal(10,0) DEFAULT NULL,
-  `Longitude` decimal(10,0) DEFAULT NULL,
+  `Delivery_Address` varchar(255) DEFAULT NULL,
+  `Latitude` decimal(65,30) DEFAULT NULL,
+  `Longitude` decimal(65,30) DEFAULT NULL,
   `Order_Type` enum('Dine-In','Take-Away','Delivery') NOT NULL DEFAULT 'Dine-In',
   `Created_At` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `Status` enum('Pending','Completed','Cancelled') NOT NULL DEFAULT 'Pending',
@@ -189,7 +187,7 @@ CREATE TABLE `products` (
 
 LOCK TABLES `products` WRITE;
 /*!40000 ALTER TABLE `products` DISABLE KEYS */;
-INSERT INTO `products` VALUES (1,'Cappuccino','Espresso topped with steamed milk and froth—creamy, balanced, and comforting.','Coffee',9.90,'cappuccino.jpeg',1),(2,'Daan Ji','Crispy toast filled with a perfectly fried egg and a touch of sauce—simple, comforting, and a Malaysian breakfast classic.','LightBite',5.90,'daanji.png',0),(3,'Honey Waffle','Golden, crispy waffles drizzled with sweet honey—perfectly soft on the inside and delightfully crunchy on the outside. A treat for any time of the day.','LightBite',10.90,'honeywaffle.jpg',0),(4,'Takoyaki','Crispy on the outside, soft and savory on the inside, filled with tender octopus and topped with savory sauces, mayo, and bonito flakes—a Japanese street food favorite!','LightBite',7.00,'takoyaki.jpg',2),(5,'Nasi Lemak','Steamed coconut rice served with spicy sambal, fried anchovies, peanuts, boiled egg, and cucumber. A Malaysian classic that warms the soul.','HotMeal',3.00,'nasilemak.jpg',2),(6,'Spaghetti Bolognese','Pasta tossed in a rich, meaty tomato sauce, topped with Parmesan. Simple, flavorful, and always a favorite.','HotMeal',12.90,'spaghetti.jpg',0),(7,'Fish & Chips','Crispy battered fish served with golden fries and tartar sauce. A classic that’s warm, crunchy, and delicious.','HotMeal',12.90,'fish&chips.jpeg',1),(8,'Espresso (Hot)','Rich and bold, a concentrated shot of pure coffee flavor—perfect for a quick energy boost.','Coffee',8.90,'espresso.webp',1),(9,'Latte (Hot)','Espresso with steamed milk, lightly sweet and smooth—ideal for any time of day.','Coffee',8.90,'latte.jpg',1),(10,'Green Tea (Hot)','Light and soothing, packed with antioxidants for a gentle pick-me-up.','Tea',2.00,'greentea.jpeg',2),(11,'Oolong Tea (Hot)','Partially fermented tea with a smooth, aromatic taste—rich and mellow.','Tea',2.90,'oolongtea.jpeg',1),(12,'English Breakfast Tea (Hot)','Classic black tea with a robust flavor—perfect for starting your day.','Tea',3.50,'englishtea.jpeg',0);
+INSERT INTO `products` VALUES (1,'Cappuccino','Espresso topped with steamed milk and froth—creamy, balanced, and comforting.','Coffee',9.90,'cappuccino.jpeg',1),(2,'Daan Ji','Crispy toast filled with a perfectly fried egg and a touch of sauce—simple, comforting, and a Malaysian breakfast classic.','LightBite',5.90,'daanji.png',0),(3,'Honey Waffle','Golden, crispy waffles drizzled with sweet honey—perfectly soft on the inside and delightfully crunchy on the outside. A treat for any time of the day.','LightBite',10.90,'honeywaffle.jpg',1),(4,'Takoyaki','Crispy on the outside, soft and savory on the inside, filled with tender octopus and topped with savory sauces, mayo, and bonito flakes—a Japanese street food favorite!','LightBite',7.00,'takoyaki.jpg',2),(5,'Nasi Lemak','Steamed coconut rice served with spicy sambal, fried anchovies, peanuts, boiled egg, and cucumber. A Malaysian classic that warms the soul.','HotMeal',3.00,'nasilemak.jpg',6),(6,'Spaghetti Bolognese','Pasta tossed in a rich, meaty tomato sauce, topped with Parmesan. Simple, flavorful, and always a favorite.','HotMeal',12.90,'spaghetti.jpg',1),(7,'Fish & Chips','Crispy battered fish served with golden fries and tartar sauce. A classic that’s warm, crunchy, and delicious.','HotMeal',12.90,'fish&chips.jpeg',1),(8,'Espresso (Hot)','Rich and bold, a concentrated shot of pure coffee flavor—perfect for a quick energy boost.','Coffee',8.90,'espresso.webp',1),(9,'Latte (Hot)','Espresso with steamed milk, lightly sweet and smooth—ideal for any time of day.','Coffee',8.90,'latte.jpg',2),(10,'Green Tea (Hot)','Light and soothing, packed with antioxidants for a gentle pick-me-up.','Tea',2.00,'greentea.jpeg',4),(11,'Oolong Tea (Hot)','Partially fermented tea with a smooth, aromatic taste—rich and mellow.','Tea',2.90,'oolongtea.jpeg',1),(12,'English Breakfast Tea (Hot)','Classic black tea with a robust flavor—perfect for starting your day.','Tea',3.50,'englishtea.jpeg',0);
 /*!40000 ALTER TABLE `products` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -209,7 +207,7 @@ CREATE TABLE `users` (
   `Default_Address` varchar(150) DEFAULT NULL,
   `Image_Path` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`User_ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -218,7 +216,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'HuoYan','123456','0123456789','huoyan0928@gmail.com',NULL,NULL),(2,'Phon Mei Xin','$2y$12$MOJ3V3DY8XgahCArct0AD.quzKHCtg77xizZYx1My6nxlLN86670m','01123456789','2@gmail.com','CS-1-01, Unisuites Kampar, Perak',NULL),(3,'Jack','$2y$12$qkveureF5AIJWpt7i.aDHeBPQ9haGr8WwpyCDxKpgrMSKywpgbFxW','0123456788','123@gmail.com',NULL,NULL);
+INSERT INTO `users` VALUES (1,'Jacky','$2y$12$wzuh9y37C1Y6un59QaIQJu//zcQASP.VsHM5D8IbIjOhzFuziMPfK','0163816541','lopp7185@gmail.com',NULL,NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -231,4 +229,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-12-10  6:10:19
+-- Dump completed on 2025-12-10 18:19:15
