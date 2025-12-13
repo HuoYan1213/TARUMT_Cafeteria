@@ -106,6 +106,11 @@ class AuthController {
         $product_ids = isset($_POST['product_ids']) ? $_POST['product_ids'] : [];
         $cart_id = $this->getCart($this->user_id);
 
+        // Capture delivery details
+        $delivery_address = isset($_POST['delivery_address']) ? trim($_POST['delivery_address']) : null;
+        $latitude = isset($_POST['latitude']) ? floatval($_POST['latitude']) : null;
+        $longitude = isset($_POST['longitude']) ? floatval($_POST['longitude']) : null;
+
         if (empty($product_ids) || !$cart_id) {
             echo json_encode(['status' => 'error', 'message' => 'No products to process.']);
             exit;
@@ -130,15 +135,16 @@ class AuthController {
         $order_id = IDHelper::generate($this->conn, 'orders', 'Order_ID', 'ORD');
         $current_time = date('Y-m-d H:i:s');
         $status = 'Pending'; // New status for QR flow
-        $payment_method = isset($_POST['payment_method']) && str_contains($_POST['payment_method'], 'fpx') ? 'Online Banking' : 'E-Wallet';
 
         // Insert with all details, including order type
-        $sql_order = "INSERT INTO orders (Order_ID, User_ID, Created_At, Total_Amount, Status, Order_Type) VALUES (?, ?, ?, ?, ?, ?)";
+        $sql_order = "INSERT INTO orders (Order_ID, User_ID, Created_At, Total_Amount, Status, Order_Type, Delivery_Address, Latitude, Longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->conn->prepare($sql_order);
-        $stmt->bind_param("sisdss", $order_id, $this->user_id, $current_time, $final_total, $status, $order_type);
+        $stmt->bind_param("sisdsssdd", $order_id, $this->user_id, $current_time, $final_total, $status, $order_type, $delivery_address, $latitude, $longitude);
 
         if ($stmt->execute()) {
-            $this->createPaymentRecord($order_id, $final_total, $payment_method, $provider);
+            // Pass the raw payment method (e.g., 'e-wallet-initiate') so createPaymentRecord sets status to PENDING
+            $raw_payment_method = isset($_POST['payment_method']) ? $_POST['payment_method'] : 'e-wallet-initiate';
+            $this->createPaymentRecord($order_id, $final_total, $raw_payment_method, $provider);
             echo json_encode(['status' => 'success', 'order_id' => $order_id]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to initiate payment.']);
@@ -159,6 +165,13 @@ class AuthController {
             exit;
         }
         $order = $order_result->fetch_assoc();
+
+        // Check for expiration (5 minutes = 300 seconds)
+        if (time() - strtotime($order['Created_At']) > 300) {
+            echo json_encode(['status' => 'error', 'message' => 'Payment session has expired.']);
+            exit;
+        }
+
         $user_id_for_cart = $order['User_ID'];
 
         // Update order status to 'Completed'
@@ -338,13 +351,18 @@ class AuthController {
             exit;
         }
 
-        $sql = "SELECT Status, Order_ID, Total_Amount FROM orders WHERE Order_ID = ?";
+        $sql = "SELECT Status, Order_ID, Total_Amount, Created_At FROM orders WHERE Order_ID = ?";
         $stmt = $this->conn->prepare($sql);
         $stmt->bind_param("s", $order_id);
         $stmt->execute();
         $result = $stmt->get_result();
 
         if ($row = $result->fetch_assoc()) {
+            // Check expiration if Pending
+            if ($row['Status'] === 'Pending' && (time() - strtotime($row['Created_At']) > 300)) {
+                echo json_encode(['status' => 'Expired', 'message' => 'Payment session expired.']);
+                exit;
+            }
             echo json_encode([
                 'status' => $row['Status'], // e.g., 'Pending Payment', 'Completed'
                 'order_id' => $row['Order_ID'],
@@ -365,7 +383,7 @@ class AuthController {
             exit;
         }
 
-        $sql = "SELECT Total_Amount, Status FROM orders WHERE Order_ID = ?";
+        $sql = "SELECT Total_Amount, Status, Created_At FROM orders WHERE Order_ID = ?";
         $stmt = $this->conn->prepare($sql);
         $stmt->bind_param("s", $order_id);
         $stmt->execute();
@@ -376,6 +394,12 @@ class AuthController {
                 echo json_encode(['status' => 'error', 'message' => 'This payment has already been processed.']);
                 exit;
             }
+            
+            if (time() - strtotime($row['Created_At']) > 300) {
+                echo json_encode(['status' => 'error', 'message' => 'Payment link has expired.']);
+                exit;
+            }
+
             echo json_encode(['status' => 'success', 'amount' => $row['Total_Amount']]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Order not found.']);

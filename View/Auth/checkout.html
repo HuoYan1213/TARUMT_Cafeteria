@@ -626,6 +626,30 @@
             orderType: 'Dine-In' // Default
         };
 
+        // Function to format card expiry date
+        function formatCardExpiry(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.length > 2) {
+                value = value.substring(0, 2) + ' / ' + value.substring(2, 4);
+            }
+            input.value = value;
+            
+            // Simple validation logic
+            if(value.length === 7) {
+                const parts = value.split(' / ');
+                const month = parseInt(parts[0]);
+                const year = parseInt(parts[1]);
+                const currentYear = new Date().getFullYear() % 100;
+                const currentMonth = new Date().getMonth() + 1;
+                
+                if(month < 1 || month > 12 || year < currentYear || (year === currentYear && month < currentMonth)) {
+                    $(input).addClass('input-error');
+                } else {
+                    $(input).removeClass('input-error');
+                }
+            }
+        }
+
         $(document).ready(function() {
             // Set default checked radio button to be active
             $('input[name="order-type"]:checked').closest('label').addClass('active');
@@ -798,11 +822,18 @@
                 if (paymentMethod === 'e-wallet') {
                     // If order type is delivery, redirect to delivery address page first
                     if (orderType === 'Delivery') {
+                        const ewalletProvider = $('input[name="ewallet_provider"]:checked').val();
+                        if (!ewalletProvider) {
+                            displayToast("Please select an e-wallet provider.", "error");
+                            return;
+                        }
+
                         const productIds = new URLSearchParams(window.location.search).get('products');
                         const checkoutParams = new URLSearchParams({
                             products: productIds,
                             orderType: orderType,
-                            paymentMethod: 'e-wallet'
+                            paymentMethod: 'e-wallet',
+                            provider: ewalletProvider
                         });
                         window.location.href = `delivery.html?${checkoutParams.toString()}`;
                         return;

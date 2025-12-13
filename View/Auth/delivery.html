@@ -22,10 +22,13 @@
         }
 
         .delivery-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             box-sizing: border-box;
             width: 100%;
             max-width: 600px;
-            height: 100%;;
+            height: 100%;
         }
 
         .delivery-container {
@@ -345,9 +348,17 @@
                 const productIds = urlParams.get('products');
                 const orderType = urlParams.get('orderType');
                 const paymentMethod = urlParams.get('paymentMethod') || 'Delivery'; // Default to 'Delivery'
-                const bankProvider = urlParams.get('bankProvider'); // ★ 新增：從 URL 讀取銀行資訊
+                const provider = urlParams.get('bankProvider') || urlParams.get('provider'); // Get provider from URL
                 const latitude = $('#latitude').val();
                 const longitude = $('#longitude').val();
+
+                // Determine backend payment method string
+                let backendPaymentMethod = paymentMethod;
+                if (paymentMethod === 'e-wallet') {
+                    backendPaymentMethod = 'e-wallet-initiate';
+                } else if (paymentMethod === 'fpx') {
+                    backendPaymentMethod = 'fpx-initiate';
+                }
 
                 $.ajax({
                     url: '../../Controller/AuthController.php',
@@ -358,8 +369,8 @@
                         product_ids: productIds ? productIds.split(',') : [],
                         order_type: orderType,
                         delivery_address: fullAddress,
-                        payment_method: paymentMethod,
-                        provider: bankProvider, // ★ 新增：將銀行資訊傳給後端
+                        payment_method: backendPaymentMethod,
+                        provider: provider,
                         latitude: latitude,
                         longitude: longitude
                     },
@@ -368,9 +379,23 @@
                             displayToast(response.message, 'success');
                             if (response.order_id) {
                                 // If FPX and Delivery redirect to banking page
-                                if (paymentMethod === 'fpx' && bankProvider) {
-                                    const bankingUrl = `banking.html?oid=${response.order_id}&bank=${bankProvider}`;
+                                if (paymentMethod === 'fpx' && provider) {
+                                    const bankingUrl = `banking.html?oid=${response.order_id}&bank=${provider}`;
                                     window.location.href = bankingUrl;
+                                    return;
+                                }
+
+                                // If E-wallet and Delivery redirect to payment page
+                                if (paymentMethod === 'e-wallet' && provider) {
+                                    let providerShortName = '';
+                                    if (provider === "Touch'n Go") providerShortName = 'tng';
+                                    else if (provider === "GrabPay") providerShortName = 'grabpay';
+                                    else if (provider === "AliPay") providerShortName = 'alipay';
+                                    else if (provider === "Boost") providerShortName = 'boost';
+                                    else if (provider === "ShopeePay") providerShortName = 'shopeepay';
+                                    
+                                    const paymentUrl = `payment.html?oid=${response.order_id}&provider=${providerShortName}`;
+                                    window.location.href = paymentUrl;
                                     return;
                                 }
 

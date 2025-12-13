@@ -26,6 +26,12 @@
 <script>
     $(document).ready(function() {
         function loadCart() {
+            // Save currently selected items before reloading
+            let selectedItems = [];
+            $('.cart-item-checkbox:checked').each(function() {
+                selectedItems.push($(this).val());
+            });
+
             $('#cart-items-container').html('<span id="loading-text">Loading your cart...</span>');
             $('#summary-cost-container').html('');
 
@@ -38,6 +44,12 @@
                 },
                 success: function(response) {
                     $('#cart-items-container').html(response.items_html);
+                    
+                    // Restore selection state
+                    selectedItems.forEach(function(id) {
+                        $(`.cart-item-checkbox[value="${id}"]`).prop('checked', true);
+                    });
+
                     if (response.items_html.includes('Your cart is empty')) {
                         $('.cart-header').hide();
                     } else {
