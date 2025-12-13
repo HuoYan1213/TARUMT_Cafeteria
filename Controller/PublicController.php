@@ -40,6 +40,7 @@ class PublicController {
     }
 
     private function register() {
+        session_write_close();
         header('Content-Type: application/json');
 
         $name = isset($_POST['name']) ? trim($_POST['name']) : '';
@@ -168,6 +169,8 @@ class PublicController {
         $_SESSION['reset_otp'] = $otp;
         $_SESSION['reset_email'] = $email;
         $_SESSION['reset_otp_expiry'] = time() + 300; // OTP valid for 5 minutes
+
+        session_write_close();
 
         // --- Start of Real Email Sending Logic ---
         $mail = new PHPMailer(true);

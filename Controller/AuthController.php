@@ -347,6 +347,7 @@ class AuthController {
     }
 
     private function checkOrderStatus() {
+        session_write_close();
         header('Content-Type: application/json');
         $order_id = isset($_GET['oid']) ? $_GET['oid'] : '';
 
@@ -379,6 +380,7 @@ class AuthController {
     }
 
     private function getOrderConfirmationDetails() {
+        session_write_close();
         header('Content-Type: application/json');
         $order_id = isset($_GET['oid']) ? $_GET['oid'] : '';
 
@@ -412,6 +414,7 @@ class AuthController {
     }
 
     private function getOrderDetails() {
+        session_write_close();
         header('Content-Type: application/json');
         $order_id = isset($_GET['oid']) ? $_GET['oid'] : '';
     
@@ -454,6 +457,7 @@ class AuthController {
     }
 
     private function getTopSales() {
+        session_write_close();
         header('Content-Type: application/json');
         
         $sql = "SELECT Product_Name, Price, Image_Path 
@@ -479,6 +483,7 @@ class AuthController {
     }
 
     private function checkSession() {
+        session_write_close();
         header('Content-Type: application/json');
         if (isset($_SESSION['user_id']) && $_SESSION['user_id'] > 0) {
             echo json_encode(['status' => 'success', 'loggedIn' => true]);
@@ -489,6 +494,7 @@ class AuthController {
     }
 
     private function getProfileDetails() {
+        session_write_close();
         header('Content-Type: application/json');
         if ($this->user_id === 0) {
             echo json_encode(['status' => 'error', 'message' => 'User not logged in.']);
@@ -625,6 +631,7 @@ class AuthController {
     }
 
     private function getOrderHistory() {
+        session_write_close();
         if ($this->user_id === 0) { // Should be protected by checkSession on the frontend
             echo '<p>Please log in to see your order history.</p>';
             exit;
@@ -716,6 +723,7 @@ class AuthController {
     }
 
     private function getCheckoutDetails() {
+        session_write_close();
         header('Content-Type: application/json');
         $cart_id = $this->getCart($this->user_id);
         $product_ids = isset($_POST['product_ids']) && is_array($_POST['product_ids']) ? $_POST['product_ids'] : [];
@@ -817,6 +825,7 @@ class AuthController {
     }
 
     private function getCartItems() {
+        session_write_close();
         header('Content-Type: application/json');
         $cart_id = $this->getCart($this->user_id);
 
@@ -906,6 +915,7 @@ class AuthController {
     }
 
     private function getProducts() {
+        session_write_close();
         $category = isset($_POST['category']) ? $_POST['category'] : '';
 
         $sql = "SELECT * FROM products WHERE Category = ?";
