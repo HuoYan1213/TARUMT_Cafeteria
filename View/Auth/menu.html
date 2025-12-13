@@ -94,6 +94,8 @@
 
 <script>
     $(document).ready(function() {
+        let isAddingToCart = false;
+
         setTimeout(function() {
             // Initialize Page-Flip
             const pageFlip = new St.PageFlip(document.getElementById('menu-book'), {
@@ -154,11 +156,14 @@
             $(document).on('click', '.add-cart-button', function(e) {
                 e.preventDefault();
 
+                if (isAddingToCart) return;
+
                 let id = $(this).data('id');
                 let $button = $(this);  
 
                 if($button.prop('disabled')) return;
 
+                isAddingToCart = true;
                 let originalText = $button.text();
                 $button.prop('disabled', true).text('Adding...');
 
@@ -184,7 +189,10 @@
                         displayToast("Server Error. Please try again.", "error");
                     },
                     complete: function() {
-                        $button.prop('disabled', false).text(originalText);
+                        setTimeout(() => {
+                            $button.prop('disabled', false).text(originalText);
+                            isAddingToCart = false;
+                        }, 500);
                     }
                 });
             });

@@ -814,6 +814,10 @@
                 const paymentMethod = $('input[name="method-type"]:checked').val();
                 const orderType = orderState.orderType;
 
+                const $button = $(this);
+                if ($button.prop('disabled')) return;
+                const originalText = $button.text();
+
                 if (!paymentMethod) {
                     displayToast("Please select a payment method.", "error");
                     return;
@@ -847,6 +851,9 @@
                     const totalText = $('#order-total').text();
                     const totalAmount = parseFloat(totalText.replace('RM', '').trim());
 
+                    // Disable button to prevent double submission
+                    $button.prop('disabled', true).text('Processing...');
+
                     // 1. Initiate an order with 'Pending Payment' status
                     $.ajax({
                         url: '../../Controller/AuthController.php',
@@ -875,10 +882,12 @@
 
                             } else {
                                 displayToast(response.message || 'Could not initiate payment.', 'error');
+                                $button.prop('disabled', false).text(originalText);
                             }
                         },
                         error: function() {
                             displayToast('An error occurred while initiating payment.', 'error');
+                            $button.prop('disabled', false).text(originalText);
                         }
                     });
 
@@ -930,6 +939,9 @@
                     const totalText = $('#order-total').text();
                     const totalAmount = parseFloat(totalText.replace('RM', '').trim());
 
+                    // Disable button
+                    $button.prop('disabled', true).text('Processing...');
+
                     // Initiate an order with 'Pending' status for FPX
                     $.ajax({
                         url: '../../Controller/AuthController.php',
@@ -950,9 +962,13 @@
                                 window.location.href = bankingUrl;
                             } else {
                                 displayToast(response.message || 'Could not initiate FPX payment.', 'error');
+                                $button.prop('disabled', false).text(originalText);
                             }
                         },
-                        error: function() { displayToast('An error occurred while initiating FPX payment.', 'error'); }
+                        error: function() { 
+                            displayToast('An error occurred while initiating FPX payment.', 'error'); 
+                            $button.prop('disabled', false).text(originalText);
+                        }
                     });
                     return; // Stop further execution
                 }
@@ -988,6 +1004,9 @@
                     const urlParams = new URLSearchParams(window.location.search);
                     const productIds = urlParams.get('products');
 
+                    // Disable button
+                    $button.prop('disabled', true).text('Processing...');
+
                     $.ajax({
                         url: '../../Controller/AuthController.php',
                         type: 'POST',
@@ -1008,11 +1027,13 @@
                                 }
                             } else {
                                 displayToast(response.message || 'Failed to place order.', 'error');
+                                $button.prop('disabled', false).text(originalText);
                             }
                         },
                         error: function(xhr) {
                             console.error('AJAX error placing order:', xhr.responseText);
                             displayToast('An error occurred while trying to place the order.', 'error');
+                            $button.prop('disabled', false).text(originalText);
                         }
                     });
                 } else if (totalAmount <= 0 && paymentMethod !== 'counter') {

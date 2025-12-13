@@ -1,4 +1,11 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+
 $HOST = "tarumt-db.csythvbw89fp.us-east-1.rds.amazonaws.com";
 $USER = "admin";
 $PASSWORD = "tarumt2023";

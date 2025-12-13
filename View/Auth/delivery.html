@@ -331,6 +331,10 @@
             $('#confirm-delivery-button').on('click', function() {
                 const houseDetails = $('#house-details').val().trim();
                 const mapAddress = $('#map-address').val().trim();
+
+                const $button = $(this);
+                if ($button.prop('disabled')) return;
+                const originalText = $button.text();
                 
                 if (!houseDetails) {
                     displayToast("Please enter your House No. / Unit details.", "error");
@@ -359,6 +363,8 @@
                 } else if (paymentMethod === 'fpx') {
                     backendPaymentMethod = 'fpx-initiate';
                 }
+
+                $button.prop('disabled', true).text('Processing...');
 
                 $.ajax({
                     url: '../../Controller/AuthController.php',
@@ -404,11 +410,13 @@
                             }
                         } else {
                             displayToast(response.message || 'Failed to place order.', 'error');
+                            $button.prop('disabled', false).text(originalText);
                         }
                     },
                     error: function(xhr) {
                         console.error('AJAX error placing delivery order:', xhr.responseText);
                         displayToast('An error occurred while placing the order.', 'error');
+                        $button.prop('disabled', false).text(originalText);
                     }
                 });
             });

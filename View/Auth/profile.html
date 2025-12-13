@@ -79,6 +79,9 @@ $(document).ready(function() {
         displayConfirmationToast(
             "Are you sure you want to logout?",
             function() { // onConfirm
+                const $btn = $('#logout-button');
+                if ($btn.prop('disabled')) return;
+                $btn.prop('disabled', true).text('Logging out...');
                 $.ajax({
                     url: '../../Controller/AuthController.php',
                     type: 'POST',
@@ -90,6 +93,8 @@ $(document).ready(function() {
                             setTimeout(() => {
                                 window.location.href = '../Public/login.html';
                             }, 1500);
+                        } else {
+                            $btn.prop('disabled', false).text('Logout');
                         }
                     }
                 });
@@ -100,6 +105,8 @@ $(document).ready(function() {
     // 3. Handle Edit/Confirm Profile
     $('#edit-button').on('click', function() {
         const $button = $(this);
+        if ($button.prop('disabled')) return;
+
         const isEditMode = $button.find('span').text() === 'Edit Profile';
 
         if (isEditMode) {
@@ -141,6 +148,8 @@ $(document).ready(function() {
                 formData.append('profile_picture', fileInput.files[0]);
             }
 
+            $button.prop('disabled', true).find('span').text('Saving...');
+
             // AJAX call to update profile
             $.ajax({
                 url: '../../Controller/AuthController.php',
@@ -171,6 +180,9 @@ $(document).ready(function() {
                 },
                 error: function() {
                     displayToast('An error occurred while updating profile.', 'error');
+                },
+                complete: function() {
+                    $button.prop('disabled', false);
                 }
             });
         }
@@ -201,6 +213,9 @@ $(document).ready(function() {
                 displayConfirmationToast(
                     "All your data will be lost. Please confirm again.",
                     function() { // onFinalConfirm
+                        const $btn = $('#delete-button');
+                        if ($btn.prop('disabled')) return;
+                        $btn.prop('disabled', true).text('Deleting...');
                         $.ajax({
                             url: '../../Controller/AuthController.php',
                             type: 'POST',
@@ -215,6 +230,7 @@ $(document).ready(function() {
                                     }, 2000);
                                 } else {
                                     displayToast(response.message || 'Failed to delete account.', 'error');
+                                    $btn.prop('disabled', false).text('Delete Account');
                                 }
                             },
                             error: function() {

@@ -25,6 +25,8 @@
 
 <script>
     $(document).ready(function() {
+        let isCartUpdating = false;
+
         function loadCart() {
             // Save currently selected items before reloading
             let selectedItems = [];
@@ -123,6 +125,8 @@
         }
 
         function updateCartQuantity(productId, quantity) {
+            if (isCartUpdating) return;
+            isCartUpdating = true;
             $.ajax({
                 url: '../../Controller/AuthController.php',
                 type: 'POST',
@@ -142,11 +146,16 @@
                 error: function(xhr) {
                     console.error('Failed to update quantity.', xhr.responseText);
                     displayToast("Failed to update quantity.", "error");
+                },
+                complete: function() {
+                    isCartUpdating = false;
                 }
             });
         }
 
         function deleteCartItem(productId) {
+            if (isCartUpdating) return;
+            isCartUpdating = true;
             $.ajax({
                 url: '../../Controller/AuthController.php',
                 type: 'POST',
@@ -166,6 +175,9 @@
                 error: function(xhr) {
                     console.error('Failed to delete item.', xhr.responseText);
                     displayToast("Failed to delete item.", "error");
+                },
+                complete: function() {
+                    isCartUpdating = false;
                 }
             });
         }
@@ -257,6 +269,8 @@
                 displayConfirmationToast(
                     "Are you sure you want to remove the selected items?",
                     function() { // onConfirm
+                        if (isCartUpdating) return;
+                        isCartUpdating = true;
                         $.ajax({
                             url: '../../Controller/AuthController.php',
                             type: 'POST',
@@ -276,6 +290,9 @@
                             error: function(xhr) {
                                 console.error('Failed to delete items.', xhr.responseText);
                                 displayToast("Failed to delete selected items.", "error");
+                            },
+                            complete: function() {
+                                isCartUpdating = false;
                             }
                         });
                     },
