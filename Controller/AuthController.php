@@ -179,11 +179,13 @@ class AuthController {
         $user_id_for_cart = $order['User_ID'];
 
         // Update order status to 'Completed'
-        $sql_update = "UPDATE orders SET Status = 'Completed' WHERE Order_ID = ?";
+        // ★ Fix: Add 'AND Status = Pending' to ensure atomicity. Only one request can succeed.
+        $sql_update = "UPDATE orders SET Status = 'Completed' WHERE Order_ID = ? AND Status = 'Pending'";
         $stmt_update = $this->conn->prepare($sql_update);
         $stmt_update->bind_param("s", $order_id);
+        $stmt_update->execute();
 
-        if ($stmt_update->execute()) {
+        if ($stmt_update->affected_rows > 0) {
             // Move items from cart to order_products and clear cart
             $this->processCartForOrder($order_id, $user_id_for_cart);
             // ★ 關鍵修正：更新現有的支付記錄狀態，而不是創建新的
@@ -193,7 +195,19 @@ class AuthController {
             $stmt_update_payment->execute();
             echo json_encode(['status' => 'success', 'message' => 'Order placed successfully', 'order_id' => $order_id]);
         } else {
-            echo json_encode(['status' => 'error', 'message' => 'Failed to confirm order.']);
+            // If affected_rows is 0, it means the order was likely already completed by a concurrent request.
+            // Check if it is indeed completed to return a success response (idempotency).
+            $check_sql = "SELECT Status FROM orders WHERE Order_ID = ?";
+            $check_stmt = $this->conn->prepare($check_sql);
+            $check_stmt->bind_param("s", $order_id);
+            $check_stmt->execute();
+            $status = $check_stmt->get_result()->fetch_assoc()['Status'] ?? '';
+            
+            if ($status === 'Completed') {
+                echo json_encode(['status' => 'success', 'message' => 'Order already completed', 'order_id' => $order_id]);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Failed to confirm order.']);
+            }
         }
         exit;
     }
@@ -916,6 +930,7 @@ class AuthController {
 
     private function getProducts() {
         session_write_close();
+        header('Content-Type: text/html');
         $category = isset($_POST['category']) ? $_POST['category'] : '';
 
         $sql = "SELECT * FROM products WHERE Category = ?";

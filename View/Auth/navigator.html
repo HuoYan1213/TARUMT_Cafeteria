@@ -95,11 +95,22 @@
         });
 
         $(document).on('click', 'nav .ajax-button', function() {
+            // Prevent clicks if buttons are disabled
+            if ($(this).prop('disabled')) return;
+
             let page = $(this).data('get');
+            let $clickedBtn = $(this);
             
-            $('#ajax-result').load(page);
-            $('nav .ajax-button').removeClass("enabled");
-            $(this).addClass("enabled");
+            // Disable all nav buttons to prevent race conditions
+            $('nav .ajax-button').prop('disabled', true).css('cursor', 'wait');
+
+            $('#ajax-result').load(page, function() {
+                // Re-enable buttons after load completes
+                $('nav .ajax-button').prop('disabled', false).css('cursor', 'pointer');
+                
+                $('nav .ajax-button').removeClass("enabled");
+                $clickedBtn.addClass("enabled");
+            });
         });
 
         // --- Music Player Logic ---

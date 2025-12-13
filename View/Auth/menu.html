@@ -120,6 +120,7 @@
                 $.ajax({
                     url: '../../Controller/AuthController.php', 
                     type: 'POST',
+                    dataType: 'html',
                     data: {
                         action: 'get_products',
                         category: category
