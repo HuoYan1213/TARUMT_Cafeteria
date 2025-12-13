@@ -9,7 +9,11 @@ require_once __DIR__ . '/../Helper/PHPMailer/PHPMailer.php';
 require_once __DIR__ . '/../Helper/PHPMailer/SMTP.php';
 require_once __DIR__ . '/../Helper/PHPMailer/Exception.php';
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+header('Content-Type: application/json');
 
 class PublicController {
     private $conn;
