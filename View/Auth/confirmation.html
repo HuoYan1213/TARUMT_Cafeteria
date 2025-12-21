@@ -235,7 +235,7 @@
                         if (response.status === 'success' && response.order_id) {
                             const totalAmount = parseFloat($('.total-amount span').text().replace('RM ', ''));
                             const providerName = providerData[provider]?.name || 'E-Wallet';
-                            const receiptUrl = `receipt.html?amount=${totalAmount}&orderId=${response.order_id}&method=${encodeURIComponent(providerName)}`;
+                            const receiptUrl = `receipt.html?amount=${totalAmount}&orderId=${response.order_id}&method=${encodeURIComponent(providerName)}&from=qr`;
                             window.location.href = receiptUrl;
                         } else {
                             displayToast(response.message || 'Failed to place order.', 'error');

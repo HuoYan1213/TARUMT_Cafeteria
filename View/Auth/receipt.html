@@ -144,6 +144,9 @@
             if (fromPage === 'history') {
                 // Case 1: Coming from the order history page
                 backButton.text('Back to History');
+            } else if (fromPage === 'qr') {
+                // Case 2: Coming from QR scan (confirmation page)
+                backButton.hide();
             }
 
             // Add the click handler for the button
